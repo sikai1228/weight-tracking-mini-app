@@ -102,25 +102,34 @@ async function attemptModeSwitch(newMode) {
   const current = currentWeightForValidation();
   const goal = state.meta.goal;
   const needsGoalUpdate = goal != null && current != null && !isGoalValidForMode(goal, current, newMode);
-  if (needsGoalUpdate) {
-    const unit = state.meta.unit;
-    const curStr = `${formatWeight(current, unit)} ${unitLabel(unit)}`;
-    const goalStr = `${formatWeight(goal, unit)} ${unitLabel(unit)}`;
-    const direction = newMode === 'bulk' ? 'higher' : 'lower';
-    const confirmed = await confirmDialog({
-      title: `Switch to ${newMode} mode?`,
-      message: `Switching to ${newMode} mode requires a goal ${direction} than your current weight (${curStr}). Your current goal is ${goalStr}. Update your goal to continue?`,
-      confirmLabel: 'Update goal',
-    });
-    if (!confirmed) return;
+
+  if (!needsGoalUpdate) {
+    await api.meta.setMode(newMode);
+    await refresh();
+    updateModeToggle();
+    render();
+    return;
   }
+
+  const newGoal = await goalUpdateDialog({
+    newMode,
+    currentWeight: current,
+    currentGoal: goal,
+    unit: state.meta.unit,
+  });
+  if (newGoal == null) {
+    updateModeToggle();
+    return;
+  }
+  if (!isGoalValidForMode(newGoal, current, newMode)) {
+    updateModeToggle();
+    return;
+  }
+  await api.meta.setGoal(newGoal);
   await api.meta.setMode(newMode);
   await refresh();
   updateModeToggle();
   render();
-  if (needsGoalUpdate) {
-    setTimeout(openGoalEditor, 0);
-  }
 }
 
 function currentWeightForValidation() {
@@ -135,13 +144,6 @@ function isGoalValidForMode(goal, current, mode) {
   if (goal == null || current == null) return true;
   if (mode === 'bulk') return goal > current;
   return goal < current;
-}
-
-function openGoalEditor() {
-  const card = document.querySelector('[data-stat-label="Target Weight"]');
-  if (!card) return;
-  const btn = card.querySelector('.stat-edit-btn');
-  if (btn) btn.click();
 }
 
 function directionClass(delta, mode = state.meta?.mode ?? 'bulk') {
@@ -237,6 +239,145 @@ function confirmDialog({ title, message, confirmLabel = 'Confirm', destructive =
     backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
     document.addEventListener('keydown', onKey);
     confirmBtn.focus();
+  });
+}
+
+/* ---------- Alert + goal update dialogs ---------- */
+
+function alertDialog({ title, message, confirmLabel = 'OK' }) {
+  return new Promise((resolve) => {
+    const root = document.getElementById('modal-root');
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'modal modal-alert';
+    dialog.setAttribute('role', 'alertdialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    dialog.appendChild(heading);
+
+    if (message) {
+      const body = document.createElement('p');
+      body.className = 'subtitle';
+      body.textContent = message;
+      dialog.appendChild(body);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary';
+    btn.textContent = confirmLabel;
+    actions.appendChild(btn);
+    dialog.appendChild(actions);
+
+    backdrop.appendChild(dialog);
+    root.appendChild(backdrop);
+
+    const close = () => {
+      if (backdrop.isConnected) root.removeChild(backdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve();
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') close();
+    };
+    btn.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    btn.focus();
+  });
+}
+
+function goalUpdateDialog({ newMode, currentWeight, currentGoal, unit }) {
+  return new Promise((resolve) => {
+    const root = document.getElementById('modal-root');
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'modal modal-goal-update';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    const heading = document.createElement('h2');
+    heading.textContent = `Switch to ${newMode} mode`;
+    dialog.appendChild(heading);
+
+    const body = document.createElement('p');
+    body.className = 'subtitle';
+    const direction = newMode === 'bulk' ? 'higher' : 'lower';
+    body.textContent = `Set a new goal ${direction} than your current weight (${formatWeight(currentWeight, unit)} ${unitLabel(unit)}). Your current goal is ${formatWeight(currentGoal, unit)} ${unitLabel(unit)}.`;
+    dialog.appendChild(body);
+
+    const field = document.createElement('div');
+    field.className = 'field';
+    const labelEl = document.createElement('label');
+    labelEl.htmlFor = 'goal-update-input';
+    labelEl.textContent = `New goal (${unitLabel(unit)})`;
+    field.appendChild(labelEl);
+
+    const inputWrap = document.createElement('div');
+    inputWrap.className = 'weight-input';
+    const input = document.createElement('input');
+    input.id = 'goal-update-input';
+    input.type = 'number';
+    input.step = '0.1';
+    input.min = '1';
+    input.inputMode = 'decimal';
+    inputWrap.appendChild(input);
+    const suffix = document.createElement('span');
+    suffix.className = 'suffix';
+    suffix.textContent = unitLabel(unit);
+    inputWrap.appendChild(suffix);
+    field.appendChild(inputWrap);
+    dialog.appendChild(field);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-ghost';
+    cancelBtn.textContent = 'Cancel';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-primary';
+    saveBtn.textContent = 'Save';
+    saveBtn.disabled = true;
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+    dialog.appendChild(actions);
+
+    backdrop.appendChild(dialog);
+    root.appendChild(backdrop);
+
+    const isValid = (displayValue) => {
+      if (!(displayValue > 0)) return false;
+      const base = toBase(displayValue, unit);
+      return newMode === 'bulk' ? base > currentWeight : base < currentWeight;
+    };
+
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      saveBtn.disabled = !isValid(v);
+    });
+
+    const close = (result) => {
+      if (backdrop.isConnected) root.removeChild(backdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') close(null);
+      if (e.key === 'Enter' && !saveBtn.disabled) close(toBase(Number(input.value), unit));
+    };
+    cancelBtn.addEventListener('click', () => close(null));
+    saveBtn.addEventListener('click', () => {
+      const v = Number(input.value);
+      if (isValid(v)) close(toBase(v, unit));
+    });
+    document.addEventListener('keydown', onKey);
+    input.focus();
   });
 }
 
@@ -445,6 +586,21 @@ function buildStatsRow() {
     unit,
     editable: true,
     onSave: async (v) => {
+      const goal = state.meta.goal;
+      const mode = state.meta.mode;
+      const invalid = goal != null && (
+        (mode === 'bulk' && v >= goal) ||
+        (mode === 'cut' && v <= goal)
+      );
+      if (invalid) {
+        const direction = mode === 'bulk' ? 'less' : 'greater';
+        await alertDialog({
+          title: 'Invalid starting weight',
+          message: `In ${mode} mode, your starting weight must be ${direction} than your goal (${formatWeight(goal, unit)} ${unitLabel(unit)}). Your starting weight has been reverted.`,
+        });
+        render();
+        return;
+      }
       await api.meta.setStartWeight(v);
       await refresh();
       render();
@@ -459,9 +615,11 @@ function buildStatsRow() {
     onSave: async (v) => {
       const current = currentWeightForValidation();
       if (!isGoalValidForMode(v, current, state.meta.mode)) {
-        showToast(state.meta.mode === 'bulk'
-          ? 'Goal must be higher than current weight in bulk mode.'
-          : 'Goal must be lower than current weight in cut mode.');
+        const direction = state.meta.mode === 'bulk' ? 'higher' : 'lower';
+        await alertDialog({
+          title: 'Invalid goal',
+          message: `In ${state.meta.mode} mode, your goal must be ${direction} than your current weight (${formatWeight(current, unit)} ${unitLabel(unit)}). Your goal has been reverted.`,
+        });
         render();
         return;
       }
@@ -471,7 +629,7 @@ function buildStatsRow() {
     },
   }));
 
-  const estimate = estimateGoalDate(state.entries, state.meta.goal);
+  const estimate = estimateGoalDate(state.entries, state.meta.goal, { mode: state.meta.mode });
   row.appendChild(buildStatCard({
     label: 'Arriving By',
     value: estimate.date,

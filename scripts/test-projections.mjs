@@ -144,5 +144,19 @@ test('projection more than 2 years out returns too_far', () => {
   assert.equal(result.reason, 'too_far');
 });
 
+test('cut mode with losing trend projects a date', () => {
+  const entries = generateEntries('2026-01-01', 30, 180, -0.2);
+  const result = estimateGoalDate(entries, 160, { mode: 'cut' });
+  assert.ok(result.date != null, `reason=${result.reason}`);
+  assert.ok(result.weeklyRate < 0);
+});
+
+test('bulk mode explicit with losing trend returns wrong_direction', () => {
+  const entries = generateEntries('2026-01-01', 30, 130, -0.1);
+  const result = estimateGoalDate(entries, 145, { mode: 'bulk' });
+  assert.equal(result.date, null);
+  assert.equal(result.reason, 'wrong_direction');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

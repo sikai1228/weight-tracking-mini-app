@@ -76,6 +76,7 @@ export function estimateGoalDate(entries, goalWeight, options = {}) {
     minPoints = 14,
     slopeThreshold = 0.005,
     maxDaysOut = 730,
+    mode = null,
   } = options;
 
   if (goalWeight == null || !Array.isArray(entries) || entries.length === 0) {
@@ -101,8 +102,16 @@ export function estimateGoalDate(entries, goalWeight, options = {}) {
   }
 
   const currentTrendWeight = window[window.length - 1].value;
-  const isGaining = goalWeight > currentTrendWeight;
-  if ((isGaining && slope <= 0) || (!isGaining && slope >= 0)) {
+  let isCorrectDirection;
+  if (mode === 'bulk') {
+    isCorrectDirection = slope > 0;
+  } else if (mode === 'cut') {
+    isCorrectDirection = slope < 0;
+  } else {
+    const isGaining = goalWeight > currentTrendWeight;
+    isCorrectDirection = isGaining ? slope > 0 : slope < 0;
+  }
+  if (!isCorrectDirection) {
     return { date: null, reason: 'wrong_direction', windowDays, slope, weeklyRate: slope * 7, rSquared };
   }
 

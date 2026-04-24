@@ -867,6 +867,9 @@ nav {
 .modal .field { margin-bottom: 14px; }
 .modal .actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
 
+.modal-alert { width: 320px; }
+.modal-goal-update { width: 360px; }
+
 /* SVG chart */
 svg .grid-line { stroke: var(--border); stroke-width: 0.5; }
 svg .chart-line { fill: none; stroke: var(--accent-light); stroke-width: 1.5; }
