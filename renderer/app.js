@@ -320,29 +320,15 @@ function buildStatsRow() {
     value: estimate.date,
     kind: 'date',
     editable: false,
-    secondary: formatEstimateSecondary(estimate),
+    info: {
+      onClick: (anchor) => showProjectionInfo(estimate, state.meta.goal, anchor),
+    },
   }));
 
   return row;
 }
 
-function formatEstimateSecondary(estimate) {
-  if (estimate.date == null) {
-    switch (estimate.reason) {
-      case 'insufficient_data': return 'Need 14+ days of data';
-      case 'plateau': return 'Plateau, no clear trend';
-      case 'wrong_direction': return 'Trending away from goal';
-      case 'too_far': return 'More than 2 years out';
-      default: return '';
-    }
-  }
-  const rate = estimate.weeklyRate;
-  const rateStr = (rate >= 0 ? '+' : '−') + Math.abs(rate).toFixed(2);
-  const r2 = estimate.rSquared.toFixed(2);
-  return `${rateStr} lbs/week · R² ${r2}`;
-}
-
-function buildStatCard({ label, value, kind = 'weight', editable, onSave, secondary }) {
+function buildStatCard({ label, value, kind = 'weight', editable, onSave, info }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
@@ -361,6 +347,18 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave, second
     editBtn.setAttribute('aria-label', `Edit ${label.toLowerCase()}`);
     editBtn.innerHTML = editIcon();
     header.appendChild(editBtn);
+  }
+
+  if (info) {
+    const infoBtn = document.createElement('button');
+    infoBtn.className = 'stat-info-btn';
+    infoBtn.setAttribute('aria-label', `About ${label.toLowerCase()}`);
+    infoBtn.innerHTML = infoIcon();
+    infoBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      info.onClick(infoBtn);
+    });
+    header.appendChild(infoBtn);
   }
 
   card.appendChild(header);
@@ -385,13 +383,6 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave, second
   }
 
   card.appendChild(valueEl);
-
-  if (secondary) {
-    const sub = document.createElement('div');
-    sub.className = 'stat-secondary';
-    sub.textContent = secondary;
-    card.appendChild(sub);
-  }
 
   if (editable) {
     editBtn.addEventListener('click', () => {
@@ -441,6 +432,83 @@ function editIcon() {
     <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/>
     <path d="M10 4l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
   </svg>`;
+}
+
+function infoIcon() {
+  return `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
+    <path d="M8 7.2v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="8" cy="5.2" r="0.6" fill="currentColor"/>
+  </svg>`;
+}
+
+function showProjectionInfo(estimate, goalWeight, anchorEl) {
+  const root = document.getElementById('modal-root');
+  root.replaceChildren();
+
+  const popover = document.createElement('div');
+  popover.className = 'projection-popover';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'projection-popover-close';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.innerHTML = '×';
+  popover.appendChild(closeBtn);
+
+  const content = document.createElement('div');
+  content.className = 'projection-popover-content';
+  content.innerHTML = projectionInfoHtml(estimate, goalWeight);
+  popover.appendChild(content);
+
+  root.appendChild(popover);
+
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const popWidth = popover.offsetWidth;
+  const viewportW = window.innerWidth;
+  let left = anchorRect.right - popWidth;
+  if (left < 16) left = 16;
+  if (left + popWidth > viewportW - 16) left = viewportW - popWidth - 16;
+  const top = anchorRect.bottom + 8;
+  popover.style.position = 'fixed';
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
+
+  const close = () => {
+    root.replaceChildren();
+    document.removeEventListener('mousedown', onOutside, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  const onOutside = (e) => {
+    if (!popover.contains(e.target) && e.target !== anchorEl) close();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  closeBtn.addEventListener('click', close);
+  document.addEventListener('mousedown', onOutside, true);
+  document.addEventListener('keydown', onKey);
+}
+
+function projectionInfoHtml(estimate, goalWeight) {
+  const windowDays = estimate.windowDays ?? 30;
+  if (estimate.reason === 'insufficient_data') {
+    return `Log at least <strong>14 days</strong> of weights to see a projection.`;
+  }
+  if (estimate.reason === 'plateau') {
+    return `Your weight has been steady over the past <strong>${windowDays} days</strong>. Log more entries to see a projection.`;
+  }
+  const direction = estimate.slope > 0 ? 'gaining' : 'losing';
+  const rate = Math.abs(estimate.weeklyRate).toFixed(2);
+  const goalStr = `${goalWeight} lb`;
+  if (estimate.reason === 'wrong_direction') {
+    return `You've been <strong>${direction} ${rate} lbs/week</strong> over the past <strong>${windowDays} days</strong>, which is moving away from your <strong>${goalStr} goal</strong>.`;
+  }
+  if (estimate.reason === 'too_far') {
+    return `At your current rate, reaching <strong>${goalWeight} lbs</strong> would take more than <strong>2 years</strong>. Consider adjusting your goal or your rate.`;
+  }
+  const days = Math.round(estimate.daysToGoal);
+  let confidence = 'low confidence';
+  if (estimate.rSquared >= 0.7) confidence = 'high confidence';
+  else if (estimate.rSquared >= 0.4) confidence = 'moderate confidence';
+  return `You've been <strong>${direction} ${rate} lbs/week</strong> over the past <strong>${windowDays} days</strong>. At this rate, you'll reach your <strong>${goalStr} goal</strong> in about <strong>${days} more days</strong>, with <strong>${confidence}</strong>.`;
 }
 
 function buildSparklineCard() {

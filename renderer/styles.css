@@ -360,6 +360,55 @@ nav {
 
 .stat-edit-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
 
+.stat-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.stat-info-btn:hover { color: var(--text-2); background: rgba(0,0,0,0.04); }
+
+.projection-popover {
+  background: #ffffff;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 24px 28px;
+  max-width: 400px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  z-index: 200;
+}
+
+.projection-popover-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--text-3);
+}
+.projection-popover-close:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+
+.projection-popover-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+.projection-popover-content strong {
+  font-weight: 500;
+  color: var(--text);
+}
+
 .stat-value {
   display: flex;
   align-items: baseline;
@@ -641,13 +690,7 @@ svg .chart-raw-line {
   stroke-dasharray: 2 3;
   stroke-linecap: round;
 }
-svg .chart-regression-endpoint { fill: var(--accent-dark); }
-svg .regression-label {
-  font-size: 11px;
-  font-weight: 500;
-  fill: var(--accent-dark);
-  font-family: var(--font);
-}
+svg .chart-regression-endpoint { fill: var(--accent-dark); pointer-events: none; }
 svg .chart-dot { fill: var(--text-2); pointer-events: none; }
 svg .chart-dot-raw { opacity: 0.75; }
 svg .chart-dot-hit { fill: transparent; cursor: pointer; }

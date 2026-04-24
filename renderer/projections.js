@@ -84,8 +84,9 @@ export function estimateGoalDate(entries, goalWeight, options = {}) {
 
   const rolling = computeRollingAverage(entries, rollingWindowDays);
   const window = rolling.slice(-regressionWindowPoints);
-  if (window.length < minPoints) {
-    return { date: null, reason: 'insufficient_data' };
+  const windowDays = window.length;
+  if (windowDays < minPoints) {
+    return { date: null, reason: 'insufficient_data', windowDays };
   }
 
   const x0 = parseISO(window[0].date).getTime();
@@ -96,18 +97,18 @@ export function estimateGoalDate(entries, goalWeight, options = {}) {
   const { slope, intercept, rSquared } = linearRegression(regPoints);
 
   if (Math.abs(slope) < slopeThreshold) {
-    return { date: null, reason: 'plateau' };
+    return { date: null, reason: 'plateau', windowDays, slope, weeklyRate: slope * 7, rSquared };
   }
 
   const currentTrendWeight = window[window.length - 1].value;
   const isGaining = goalWeight > currentTrendWeight;
   if ((isGaining && slope <= 0) || (!isGaining && slope >= 0)) {
-    return { date: null, reason: 'wrong_direction' };
+    return { date: null, reason: 'wrong_direction', windowDays, slope, weeklyRate: slope * 7, rSquared };
   }
 
   const daysToGoal = (goalWeight - currentTrendWeight) / slope;
   if (daysToGoal > maxDaysOut) {
-    return { date: null, reason: 'too_far' };
+    return { date: null, reason: 'too_far', windowDays, slope, weeklyRate: slope * 7, rSquared, daysToGoal };
   }
 
   const anchorIso = window[window.length - 1].date;
@@ -121,6 +122,7 @@ export function estimateGoalDate(entries, goalWeight, options = {}) {
     weeklyRate: slope * 7,
     rSquared,
     daysToGoal: Math.max(0, daysToGoal),
+    windowDays,
   };
 }
 
