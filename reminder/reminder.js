@@ -4,13 +4,13 @@ const weightInput = document.getElementById('weight-input');
 const saveBtn = document.getElementById('save-btn');
 const remindLaterBtn = document.getElementById('remind-later-btn');
 const dismissBtn = document.getElementById('dismiss-btn');
-const dateEl = document.querySelector('.reminder-date');
+const titleEl = document.querySelector('.reminder-title');
 const unitEl = document.querySelector('.unit-label');
 
 let unit = 'lb';
 
 const today = new Date();
-dateEl.textContent = today.toLocaleDateString('en-US', {
+titleEl.textContent = today.toLocaleDateString('en-US', {
   weekday: 'long',
   month: 'long',
   day: 'numeric',
