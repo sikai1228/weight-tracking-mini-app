@@ -6,6 +6,7 @@ import {
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 import { estimateGoalDate, regressionLinePoints } from './projections.js';
+import { createDatePicker } from './datepicker.js';
 
 const api = window.api;
 
@@ -246,30 +247,34 @@ function buildLogCard() {
         </div>
       </div>
       <div class="field">
-        <label for="log-date">Date</label>
-        <input id="log-date" type="date" />
+        <label>Date</label>
+        <div id="log-date-mount"></div>
       </div>
       <button class="btn-primary" id="log-save">Save entry</button>
     </div>
   `;
 
-  const dateInput = card.querySelector('#log-date');
   const weightInput = card.querySelector('#log-weight');
   const saveBtn = card.querySelector('#log-save');
-  dateInput.value = todayISO();
-  dateInput.max = todayISO();
+  const dateMount = card.querySelector('#log-date-mount');
 
-  const existingToday = state.entries.find((e) => e.date === dateInput.value);
-  if (existingToday) weightInput.value = existingToday.weight;
-
-  dateInput.addEventListener('change', () => {
-    const existing = state.entries.find((e) => e.date === dateInput.value);
-    weightInput.value = existing ? existing.weight : '';
+  const today = todayISO();
+  const picker = createDatePicker({
+    value: today,
+    maxDate: new Date(),
+    onChange: (iso) => {
+      const existing = state.entries.find((e) => e.date === iso);
+      weightInput.value = existing ? existing.weight : '';
+    },
   });
+  dateMount.appendChild(picker.element);
+
+  const existingToday = state.entries.find((e) => e.date === today);
+  if (existingToday) weightInput.value = existingToday.weight;
 
   const submit = async () => {
     const w = Number(weightInput.value);
-    const d = dateInput.value;
+    const d = picker.getValue();
     if (!(w > 0) || !d) return;
     saveBtn.disabled = true;
     try {

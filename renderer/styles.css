@@ -276,6 +276,132 @@ nav {
   outline-offset: 2px;
 }
 
+/* Custom date picker */
+.datepicker { position: relative; }
+
+.datepicker-input {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  caret-color: transparent;
+}
+
+.datepicker-popover {
+  width: 300px;
+  background: #ffffff;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 200;
+}
+
+.dp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dp-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.dp-nav { display: flex; gap: 4px; }
+
+.dp-nav-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  background: transparent;
+}
+.dp-nav-btn:hover { background: var(--bg); color: var(--text); }
+
+.dp-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.dp-dow span {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+
+.dp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.dp-day {
+  aspect-ratio: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 400;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.dp-day:hover:not(.dp-day-disabled):not(.dp-day-selected) {
+  background: var(--bg);
+}
+.dp-day-out { color: var(--text-3); }
+.dp-day-today {
+  color: var(--accent);
+  font-weight: 500;
+}
+.dp-day-selected {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+.dp-day-disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.dp-day:focus,
+.dp-day:focus-visible,
+.dp-nav-btn:focus,
+.dp-nav-btn:focus-visible {
+  outline: none;
+}
+
+.dp-footer {
+  border-top: 0.5px solid var(--border);
+  margin-top: 12px;
+  padding-top: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.dp-today-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border-radius: 6px;
+}
+.dp-today-btn:hover { background: var(--bg); }
+.dp-today-btn:focus,
+.dp-today-btn:focus-visible { outline: none; }
+
 .btn-primary {
   padding: 10px 16px;
   background: var(--accent);
