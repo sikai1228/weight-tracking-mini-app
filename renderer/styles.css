@@ -8,6 +8,8 @@
   --text-2: #6e6e73;
   --text-3: #9a9a9f;
   --accent: #639922;
+  --accent-dark: #3f6414;
+  --accent-light: #a6cc6c;
   --accent-soft: rgba(99, 153, 34, 0.12);
   --track: #e5e5ea;
   --danger: #c04a3a;
@@ -612,17 +614,15 @@ nav {
 
 /* SVG chart */
 svg .grid-line { stroke: var(--border); stroke-width: 0.5; }
-svg .chart-line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
-svg .chart-rolling { stroke-width: 2; }
+svg .chart-line { fill: none; stroke: var(--accent-light); stroke-width: 1.5; }
 svg .chart-regression {
   fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  stroke-dasharray: 5 5;
-  opacity: 0.5;
+  stroke: var(--accent-dark);
+  stroke-width: 2;
+  opacity: 1;
 }
-svg .chart-dot { fill: var(--text-3); pointer-events: none; }
-svg .chart-dot-raw { opacity: 0.3; }
+svg .chart-dot { fill: var(--text-2); pointer-events: none; }
+svg .chart-dot-raw { opacity: 0.75; }
 svg .chart-dot-hit { fill: transparent; cursor: pointer; }
 svg .goal-line { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 4; }
 svg .axis-label { fill: var(--text-3); font-size: 10px; font-family: var(--font); }

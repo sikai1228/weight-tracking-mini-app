@@ -5,7 +5,7 @@ import {
   progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
-import { estimateGoalDate, regressionLinePoints, computeRollingAverage } from './projections.js';
+import { estimateGoalDate, regressionLinePoints } from './projections.js';
 
 const api = window.api;
 
@@ -604,17 +604,12 @@ function renderTrends(root) {
   const chartWrap = document.createElement('div');
   chartWrap.style.height = '360px';
   const bounds = rangedBounds();
-  const allRolling = computeRollingAverage(state.entries, 7);
-  const rolling = allRolling
-    .filter((r) => r.date >= bounds.start && r.date <= bounds.end)
-    .map((r) => ({ date: r.date, weight: r.value }));
   const regression = state.trendsRange === '7D'
     ? null
     : regressionLinePoints(state.entries, bounds);
   chartWrap.appendChild(trendChart({
     points: windowPoints,
     goal: state.meta.goal,
-    rolling,
     regression: regression ? regression.points : null,
     xBounds: bounds,
   }));
