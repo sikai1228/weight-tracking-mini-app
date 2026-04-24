@@ -280,7 +280,7 @@ function buildLogCard() {
   const label = unitLabel(unit);
   card.innerHTML = `
     <div class="card-header">
-      <div class="card-label">Log weight</div>
+      <div class="card-label">New entry</div>
     </div>
     <div class="log-row">
       <div class="field">
@@ -294,7 +294,7 @@ function buildLogCard() {
         <label>Date</label>
         <div id="log-date-mount"></div>
       </div>
-      <button class="btn-primary" id="log-save">Save entry</button>
+      <button class="btn-primary" id="log-save">Add entry</button>
     </div>
   `;
 
@@ -344,7 +344,7 @@ function buildStatsRow() {
   const unit = state.meta.unit;
 
   row.appendChild(buildStatCard({
-    label: 'Start',
+    label: 'Starting Weight',
     value: state.meta.startWeight,
     unit,
     editable: true,
@@ -356,7 +356,7 @@ function buildStatsRow() {
   }));
 
   row.appendChild(buildStatCard({
-    label: 'Goal',
+    label: 'Target Weight',
     value: state.meta.goal,
     unit,
     editable: true,
@@ -369,7 +369,7 @@ function buildStatsRow() {
 
   const estimate = estimateGoalDate(state.entries, state.meta.goal);
   row.appendChild(buildStatCard({
-    label: 'Estimated time',
+    label: 'Arriving By',
     value: estimate.date,
     kind: 'date',
     editable: false,
