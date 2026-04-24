@@ -235,6 +235,14 @@ export function trendChart({ points, goal, rolling, regression, regressionBad = 
       y1: y(goal), y2: y(goal),
       class: 'goal-line',
     }));
+    const label = el('text', {
+      x: width - padding.right,
+      y: y(goal) - 6,
+      'text-anchor': 'end',
+      class: 'goal-label',
+    });
+    label.textContent = 'Target';
+    svg.appendChild(label);
   }
 
   if (points.length > 1) {
