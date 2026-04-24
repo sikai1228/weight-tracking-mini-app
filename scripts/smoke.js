@@ -13,11 +13,17 @@ async function main() {
   const initial = await api.meta.get();
   assert.equal(initial.isConfigured, false);
   assert.equal(initial.unit, 'lb');
+  assert.equal(initial.mode, 'bulk');
 
   await api.meta.updateUnit('kg');
   assert.equal((await api.meta.get()).unit, 'kg');
   await api.meta.updateUnit('lb');
   assert.equal((await api.meta.get()).unit, 'lb');
+
+  await api.meta.updateMode('cut');
+  assert.equal((await api.meta.get()).mode, 'cut');
+  await api.meta.updateMode('bulk');
+  assert.equal((await api.meta.get()).mode, 'bulk');
 
   await api.meta.setup({ startWeight: 115, goal: 145, startDate: '2025-09-01' });
   const configured = await api.meta.get();

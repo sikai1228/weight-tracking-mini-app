@@ -1,4 +1,4 @@
-import { parseISO, daysBetween, toISO, addDays, formatShortDate, formatEstDate, signClass } from './util.js';
+import { parseISO, daysBetween, toISO, addDays, formatShortDate, formatEstDate } from './util.js';
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -12,7 +12,7 @@ function el(tag, attrs = {}) {
   return node;
 }
 
-export function progressRing({ percent, size = 96, stroke = 6 }) {
+export function progressRing({ percent, size = 96, stroke = 6, color = 'var(--accent)' }) {
   const pct = Math.max(0, Math.min(100, percent ?? 0));
   const r = (size - stroke) / 2;
   const cx = size / 2;
@@ -34,7 +34,7 @@ export function progressRing({ percent, size = 96, stroke = 6 }) {
   svg.appendChild(el('circle', {
     cx, cy, r,
     fill: 'none',
-    stroke: 'var(--accent)',
+    stroke: color,
     'stroke-width': stroke,
     'stroke-linecap': 'round',
     'stroke-dasharray': C.toFixed(2),
@@ -175,7 +175,7 @@ export function sparkline({ points, width = 560, height = 120 }) {
   return svg;
 }
 
-export function trendChart({ points, goal, rolling, regression, xBounds, unitLabel = 'lbs', yStep = 5, width = 800, height = 360 }) {
+export function trendChart({ points, goal, rolling, regression, regressionBad = false, xBounds, unitLabel = 'lbs', yStep = 5, mode = 'bulk', width = 800, height = 360 }) {
   const wrap = document.createElement('div');
   wrap.className = 'trend-chart-wrap';
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
@@ -256,12 +256,14 @@ export function trendChart({ points, goal, rolling, regression, xBounds, unitLab
     const d = regression
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`)
       .join(' ');
-    svg.appendChild(el('path', { d, class: 'chart-regression' }));
+    const regClass = regressionBad ? 'chart-regression bad' : 'chart-regression';
+    svg.appendChild(el('path', { d, class: regClass }));
 
     for (const pt of [regression[0], regression[regression.length - 1]]) {
+      const epClass = regressionBad ? 'chart-regression-endpoint bad' : 'chart-regression-endpoint';
       svg.appendChild(el('circle', {
         cx: x(pt.date), cy: y(pt.weight),
-        r: 4, class: 'chart-regression-endpoint',
+        r: 4, class: epClass,
       }));
     }
   }
@@ -321,10 +323,16 @@ export function trendChart({ points, goal, rolling, regression, xBounds, unitLab
       const sign = v > 0 ? '+' : v < 0 ? '−' : '';
       return sign + Math.abs(v).toFixed(1);
     };
+    const directionCls = (v) => {
+      if (v == null) return 'delta-none';
+      if (v === 0) return 'delta-zero';
+      const goodWhenPositive = mode !== 'cut';
+      return ((v > 0) === goodWhenPositive) ? 'delta-pos' : 'delta-neg';
+    };
     tooltip.innerHTML = `
       <div class="tt-date">${formatEstDate(iso)}</div>
       <div class="tt-weight">${fmt(weight)} ${unitLabel}</div>
-      <div class="tt-change ${signClass(change)}">${change == null ? '' : fmtSigned(change) + ' ' + unitLabel}</div>
+      <div class="tt-change ${directionCls(change)}">${change == null ? '' : fmtSigned(change) + ' ' + unitLabel}</div>
     `;
     const dotRect = dot.getBoundingClientRect();
     const wrapRect = wrap.getBoundingClientRect();

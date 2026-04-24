@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 function emptyState() {
-  return { unit: 'lb', goal: null, startWeight: null, startDate: null, entries: [] };
+  return { unit: 'lb', mode: 'bulk', goal: null, startWeight: null, startDate: null, entries: [] };
 }
 
 function createStorage(dataDir) {
@@ -24,6 +24,7 @@ function createStorage(dataDir) {
       const parsed = JSON.parse(raw);
       cache = {
         unit: parsed.unit === 'kg' ? 'kg' : 'lb',
+        mode: parsed.mode === 'cut' ? 'cut' : 'bulk',
         goal: parsed.goal ?? null,
         startWeight: parsed.startWeight ?? null,
         startDate: parsed.startDate ?? null,

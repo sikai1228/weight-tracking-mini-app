@@ -2,7 +2,7 @@ import {
   todayISO, toISO, parseISO, addDays, daysBetween,
   formatFullDate, formatShortDate, formatEstDate,
   avg, rollingAverageWindow, weightChangePastDays,
-  progressPct, signClass, entriesInRange,
+  progressPct, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 import { estimateGoalDate, regressionLinePoints } from './projections.js';
@@ -34,7 +34,9 @@ async function boot() {
   });
   const bottomMount = document.getElementById('sidebar-bottom');
   if (bottomMount) {
+    bottomMount.appendChild(buildModeToggle());
     bottomMount.appendChild(buildUnitToggle());
+    updateModeToggle();
     updateUnitToggle();
   }
   if (!state.meta.isConfigured) {
@@ -45,13 +47,13 @@ async function boot() {
 
 function buildUnitToggle() {
   const wrap = document.createElement('div');
-  wrap.className = 'unit-toggle';
+  wrap.className = 'seg-toggle unit-toggle';
   wrap.setAttribute('role', 'group');
   wrap.setAttribute('aria-label', 'Unit');
   for (const key of ['lb', 'kg']) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'unit-seg';
+    btn.className = 'seg-btn';
     btn.dataset.unit = key;
     btn.textContent = key;
     btn.addEventListener('click', async () => {
@@ -67,9 +69,99 @@ function buildUnitToggle() {
 }
 
 function updateUnitToggle() {
-  document.querySelectorAll('.unit-seg').forEach((btn) => {
+  document.querySelectorAll('.unit-toggle .seg-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.unit === state.meta.unit);
   });
+}
+
+function buildModeToggle() {
+  const wrap = document.createElement('div');
+  wrap.className = 'seg-toggle mode-toggle';
+  wrap.setAttribute('role', 'group');
+  wrap.setAttribute('aria-label', 'Mode');
+  for (const key of ['bulk', 'cut']) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'seg-btn';
+    btn.dataset.mode = key;
+    btn.textContent = key;
+    btn.addEventListener('click', () => attemptModeSwitch(key));
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+
+function updateModeToggle() {
+  document.querySelectorAll('.mode-toggle .seg-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === state.meta.mode);
+  });
+}
+
+async function attemptModeSwitch(newMode) {
+  if (state.meta.mode === newMode) return;
+  const current = currentWeightForValidation();
+  const goal = state.meta.goal;
+  const needsGoalUpdate = goal != null && current != null && !isGoalValidForMode(goal, current, newMode);
+  if (needsGoalUpdate) {
+    const unit = state.meta.unit;
+    const curStr = `${formatWeight(current, unit)} ${unitLabel(unit)}`;
+    const goalStr = `${formatWeight(goal, unit)} ${unitLabel(unit)}`;
+    const direction = newMode === 'bulk' ? 'higher' : 'lower';
+    const confirmed = await confirmDialog({
+      title: `Switch to ${newMode} mode?`,
+      message: `Switching to ${newMode} mode requires a goal ${direction} than your current weight (${curStr}). Your current goal is ${goalStr}. Update your goal to continue?`,
+      confirmLabel: 'Update goal',
+    });
+    if (!confirmed) return;
+  }
+  await api.meta.setMode(newMode);
+  await refresh();
+  updateModeToggle();
+  render();
+  if (needsGoalUpdate) {
+    setTimeout(openGoalEditor, 0);
+  }
+}
+
+function currentWeightForValidation() {
+  if (state.entries.length) {
+    const sorted = [...state.entries].sort((a, b) => a.date.localeCompare(b.date));
+    return sorted[sorted.length - 1].weight;
+  }
+  return state.meta.startWeight;
+}
+
+function isGoalValidForMode(goal, current, mode) {
+  if (goal == null || current == null) return true;
+  if (mode === 'bulk') return goal > current;
+  return goal < current;
+}
+
+function openGoalEditor() {
+  const card = document.querySelector('[data-stat-label="Target Weight"]');
+  if (!card) return;
+  const btn = card.querySelector('.stat-edit-btn');
+  if (btn) btn.click();
+}
+
+function directionClass(delta, mode = state.meta?.mode ?? 'bulk') {
+  if (delta == null) return 'delta-none';
+  if (delta === 0) return 'delta-zero';
+  const goodWhenPositive = mode !== 'cut';
+  if ((delta > 0) === goodWhenPositive) return 'delta-pos';
+  return 'delta-neg';
+}
+
+function showToast(text, durationMs = 3500) {
+  const root = document.getElementById('modal-root');
+  if (!root) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = text;
+  root.appendChild(toast);
+  setTimeout(() => {
+    if (toast.isConnected) toast.remove();
+  }, durationMs);
 }
 
 async function refresh() {
@@ -247,7 +339,7 @@ function buildHeroCard() {
       delta.classList.add('delta-none');
       delta.textContent = 'Not enough data yet';
     } else {
-      delta.classList.add(signClass(weeklyDelta));
+      delta.classList.add(directionClass(weeklyDelta));
       delta.textContent = `${formatSignedWeight(weeklyDelta, unit)} ${unitLabel(unit)} in the past seven days`;
     }
     left.appendChild(delta);
@@ -262,7 +354,11 @@ function buildHeroCard() {
   right.className = 'ring-wrap';
   const current = latest;
   const pct = progressPct(current, state.meta.startWeight, state.meta.goal);
-  right.appendChild(progressRing({ percent: pct ?? 0 }));
+  const rawFraction = (state.meta.startWeight != null && state.meta.goal != null && state.meta.goal !== state.meta.startWeight && current != null)
+    ? (current - state.meta.startWeight) / (state.meta.goal - state.meta.startWeight)
+    : null;
+  const ringColor = rawFraction != null && rawFraction < 0 ? 'var(--color-negative)' : 'var(--accent)';
+  right.appendChild(progressRing({ percent: pct ?? 0, color: ringColor }));
   const ringText = document.createElement('div');
   ringText.className = 'ring-text';
   ringText.textContent = pct == null ? '—' : `${Math.round(pct)}%`;
@@ -361,6 +457,14 @@ function buildStatsRow() {
     unit,
     editable: true,
     onSave: async (v) => {
+      const current = currentWeightForValidation();
+      if (!isGoalValidForMode(v, current, state.meta.mode)) {
+        showToast(state.meta.mode === 'bulk'
+          ? 'Goal must be higher than current weight in bulk mode.'
+          : 'Goal must be lower than current weight in cut mode.');
+        render();
+        return;
+      }
       await api.meta.setGoal(v);
       await refresh();
       render();
@@ -384,6 +488,7 @@ function buildStatsRow() {
 function buildStatCard({ label, value, kind = 'weight', unit = 'lb', editable, onSave, info }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
+  card.setAttribute('data-stat-label', label);
 
   const header = document.createElement('div');
   header.className = 'stat-card-header';
@@ -603,7 +708,7 @@ function buildSparklineCard() {
   header.appendChild(title);
 
   const deltaEl = document.createElement('div');
-  deltaEl.className = `sparkline-delta ${signClass(deltaBase)}`;
+  deltaEl.className = `sparkline-delta ${directionClass(deltaBase)}`;
   deltaEl.textContent = deltaBase == null ? '—' : `${formatSignedWeight(deltaBase, unit)} ${unitLabel(unit)}`;
   header.appendChild(deltaEl);
 
@@ -720,7 +825,7 @@ function renderTrends(root) {
     ? windowPoints[windowPoints.length - 1].weight - windowPoints[0].weight
     : null;
   const meta = document.createElement('div');
-  meta.className = `trend-delta ${signClass(deltaBase)}`;
+  meta.className = `trend-delta ${directionClass(deltaBase)}`;
   meta.textContent = deltaBase == null ? '' : `${formatSignedWeight(deltaBase, unit)} ${unitLabel(unit)}`;
 
   header.appendChild(segmented);
@@ -738,13 +843,19 @@ function renderTrends(root) {
   const displayRegression = regression
     ? regression.points.map((p) => ({ date: p.date, weight: fromBase(p.weight, unit) }))
     : null;
+  const mode = state.meta.mode;
+  const regressionBad = regression
+    ? (mode === 'bulk' ? regression.slope <= 0 : regression.slope >= 0)
+    : false;
   chartWrap.appendChild(trendChart({
     points: displayWindow,
     goal: displayGoal,
     regression: displayRegression,
+    regressionBad,
     xBounds: bounds,
     unitLabel: unitLabel(unit),
     yStep: axisStep(unit),
+    mode,
   }));
   card.appendChild(chartWrap);
 
@@ -821,7 +932,7 @@ function renderHistory(root) {
       tr.appendChild(weightTd);
 
       const deltaTd = document.createElement('td');
-      deltaTd.className = 'delta ' + (delta == null ? 'delta-none' : signClass(delta));
+      deltaTd.className = 'delta ' + (delta == null ? 'delta-none' : directionClass(delta));
       deltaTd.textContent = delta == null ? '—' : `${formatSignedWeight(delta, unit)} ${unitLabel(unit)}`;
       tr.appendChild(deltaTd);
 

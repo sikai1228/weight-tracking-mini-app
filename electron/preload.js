@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
     setStartWeight: (value) => invoke('meta:setStartWeight', value),
     setGoal: (value) => invoke('meta:setGoal', value),
     setUnit: (value) => invoke('meta:setUnit', value),
+    setMode: (value) => invoke('meta:setMode', value),
   },
   stats: {
     all: () => invoke('stats:all'),

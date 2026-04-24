@@ -14,7 +14,8 @@
   --track: #e5e5ea;
   --danger: #c04a3a;
   --gain: #639922;
-  --loss: #ff3b30;
+  --loss: #c14545;
+  --color-negative: #c14545;
   --radius: 14px;
   --radius-sm: 10px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Inter",
@@ -103,37 +104,41 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .sidebar-bottom {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
   padding-top: 16px;
 }
 
-.unit-toggle {
-  display: inline-flex;
+.seg-toggle {
+  display: flex;
   border: 0.5px solid var(--border-strong);
   border-radius: 10px;
   padding: 2px;
   background: var(--surface-raised);
+  width: 100%;
 }
 
-.unit-seg {
-  padding: 6px 14px;
+.seg-btn {
+  flex: 1;
+  padding: 6px 0;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-2);
   background: transparent;
   border-radius: 8px;
+  text-align: center;
   transition: background 150ms ease, color 150ms ease;
 }
 
-.unit-seg:hover { color: var(--text); }
+.seg-btn:hover { color: var(--text); }
 
-.unit-seg.active {
+.seg-btn.active {
   background: var(--accent);
   color: #fff;
 }
 
-.unit-seg:focus,
-.unit-seg:focus-visible { outline: none; }
+.seg-btn:focus,
+.seg-btn:focus-visible { outline: none; }
 
 .brand {
   font-weight: 500;
@@ -580,6 +585,23 @@ nav {
   color: var(--text);
 }
 
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  z-index: 300;
+  max-width: 360px;
+  text-align: center;
+}
+
 .stat-value {
   display: flex;
   align-items: baseline;
@@ -854,6 +876,7 @@ svg .chart-regression {
   stroke-width: 2;
   opacity: 1;
 }
+svg .chart-regression.bad { stroke: var(--color-negative); }
 svg .chart-raw-line {
   fill: none;
   stroke: var(--accent-light);
@@ -862,6 +885,7 @@ svg .chart-raw-line {
   stroke-linecap: round;
 }
 svg .chart-regression-endpoint { fill: var(--accent-dark); pointer-events: none; }
+svg .chart-regression-endpoint.bad { fill: var(--color-negative); }
 svg .chart-dot { fill: var(--text-2); pointer-events: none; }
 svg .chart-dot-raw { opacity: 0.75; }
 svg .chart-dot-hit { fill: transparent; cursor: pointer; }

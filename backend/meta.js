@@ -7,6 +7,7 @@ function createMetaApi(storage) {
     const state = await storage.load();
     return {
       unit: state.unit ?? 'lb',
+      mode: state.mode ?? 'bulk',
       goal: state.goal,
       startWeight: state.startWeight,
       startDate: state.startDate,
@@ -19,6 +20,14 @@ function createMetaApi(storage) {
     return storage.update((state) => {
       state.unit = value;
       return { unit: value };
+    });
+  }
+
+  async function updateMode(value) {
+    if (value !== 'bulk' && value !== 'cut') throw new Error('mode must be bulk or cut');
+    return storage.update((state) => {
+      state.mode = value;
+      return { mode: value };
     });
   }
 
@@ -51,7 +60,7 @@ function createMetaApi(storage) {
     });
   }
 
-  return { get, setup, updateStartWeight, updateGoal, updateUnit };
+  return { get, setup, updateStartWeight, updateGoal, updateUnit, updateMode };
 }
 
 module.exports = { createMetaApi };

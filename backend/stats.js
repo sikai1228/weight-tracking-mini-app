@@ -6,6 +6,7 @@ function createStatsApi(storage) {
     return {
       meta: {
         unit: state.unit ?? 'lb',
+        mode: state.mode ?? 'bulk',
         goal: state.goal,
         startWeight: state.startWeight,
         startDate: state.startDate,
