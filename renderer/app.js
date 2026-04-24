@@ -53,6 +53,61 @@ function render() {
   fn(root);
 }
 
+/* ---------- Confirm modal ---------- */
+
+function confirmDialog({ title, message, confirmLabel = 'Confirm', destructive = false }) {
+  return new Promise((resolve) => {
+    const root = document.getElementById('modal-root');
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const dialog = document.createElement('div');
+    dialog.className = 'modal';
+    dialog.setAttribute('role', 'alertdialog');
+    dialog.setAttribute('aria-modal', 'true');
+
+    const heading = document.createElement('h2');
+    heading.textContent = title;
+    dialog.appendChild(heading);
+
+    if (message) {
+      const body = document.createElement('p');
+      body.className = 'subtitle';
+      body.textContent = message;
+      dialog.appendChild(body);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-ghost';
+    cancelBtn.textContent = 'Cancel';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = destructive ? 'btn-danger' : 'btn-primary';
+    confirmBtn.textContent = confirmLabel;
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    dialog.appendChild(actions);
+
+    backdrop.appendChild(dialog);
+    root.appendChild(backdrop);
+
+    const close = (result) => {
+      document.removeEventListener('keydown', onKey);
+      root.removeChild(backdrop);
+      resolve(result);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') close(false);
+      if (e.key === 'Enter') close(true);
+    };
+    cancelBtn.addEventListener('click', () => close(false));
+    confirmBtn.addEventListener('click', () => close(true));
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
+    document.addEventListener('keydown', onKey);
+    confirmBtn.focus();
+  });
+}
+
 /* ---------- First-launch setup ---------- */
 
 function showSetupModal() {
@@ -149,7 +204,7 @@ function buildHeroCard() {
       delta.textContent = 'Not enough data yet';
     } else {
       delta.classList.add(signClass(weeklyDelta));
-      delta.textContent = `${fmtSignedWeight(weeklyDelta)} lbs this week`;
+      delta.textContent = `${fmtSignedWeight(weeklyDelta)} lbs the past seven days`;
     }
     left.appendChild(delta);
   } else {
@@ -316,7 +371,19 @@ function buildStatCard({ label, value, editable, onSave }) {
       input.value = value ?? '';
       numEl.replaceWith(input);
       input.focus();
-      input.select();
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+
+      let cleared = false;
+      input.addEventListener('beforeinput', (e) => {
+        if (cleared) return;
+        if (e.inputType === 'insertText' || e.inputType === 'insertFromPaste') {
+          input.value = '';
+          cleared = true;
+        } else if (e.inputType && e.inputType.startsWith('delete')) {
+          cleared = true;
+        }
+      });
 
       let finished = false;
       const finalize = async (commit) => {
@@ -536,7 +603,13 @@ function renderHistory(root) {
       del.setAttribute('aria-label', `Delete entry for ${entry.date}`);
       del.innerHTML = trashIcon();
       del.addEventListener('click', async () => {
-        if (!confirm(`Delete entry for ${formatShortDate(entry.date)}?`)) return;
+        const ok = await confirmDialog({
+          title: 'Delete entry?',
+          message: `This will remove the ${fmtWeight(entry.weight)} lb entry for ${formatShortDate(entry.date)}.`,
+          confirmLabel: 'Delete',
+          destructive: true,
+        });
+        if (!ok) return;
         await api.entries.delete(entry.date);
         await refresh();
         render();

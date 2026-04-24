@@ -286,6 +286,15 @@ nav {
 
 .btn-ghost:hover { background: var(--bg); }
 
+.btn-danger {
+  padding: 10px 16px;
+  background: var(--loss);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.btn-danger:hover { filter: brightness(1.05); }
+
 .btn-danger-ghost {
   padding: 6px;
   border-radius: 8px;
@@ -356,15 +365,22 @@ nav {
   font-size: 26px;
   font-weight: 500;
   letter-spacing: -0.01em;
-  width: 80px;
-  padding: 0 2px;
-  border: none;
-  background: transparent;
-  border-bottom: 0.5px solid var(--border-strong);
-  border-radius: 0;
+  width: 110px;
+  padding: 2px 10px;
+  border: 0.5px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text);
 }
 
-.stat-edit-input:focus-visible { outline: none; border-bottom-color: var(--accent); }
+.stat-edit-input:focus,
+.stat-edit-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+.stat-edit-input::selection { background: transparent; }
 
 /* Sparkline */
 .sparkline-card { padding: 20px 24px 24px; }
