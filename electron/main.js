@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { createApi } = require('../backend');
@@ -8,6 +8,8 @@ const { registerIpc } = require('./ipc');
 const { registerReminder } = require('./reminder');
 
 let mainWindow = null;
+let tray = null;
+let isQuitting = false;
 
 function migrateLegacyData(userDataDir) {
   const target = path.join(userDataDir, 'data.json');
@@ -19,6 +21,11 @@ function migrateLegacyData(userDataDir) {
 }
 
 function createWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return mainWindow;
+  }
   const win = new BrowserWindow({
     width: 1100,
     height: 760,
@@ -38,6 +45,39 @@ function createWindow() {
   win.once('ready-to-show', () => win.show());
   win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  return win;
+}
+
+function createTray() {
+  if (tray) return tray;
+  tray = new Tray(nativeImage.createEmpty());
+  if (process.platform === 'darwin') tray.setTitle('WT');
+  tray.setToolTip('Weight Tracker');
+  const menu = Menu.buildFromTemplate([
+    {
+      label: 'Open Weight Tracker',
+      click: () => createWindow(),
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(menu);
+  return tray;
+}
+
+function setupAutoLaunch() {
+  if (process.platform === 'darwin' || process.platform === 'win32') {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      openAsHidden: true,
+    });
+  }
 }
 
 app.whenReady().then(() => {
@@ -47,13 +87,25 @@ app.whenReady().then(() => {
   registerIpc(api);
   const reminder = registerReminder({ api, getMainWindow: () => mainWindow });
   reminder.start();
-  createWindow();
+
+  setupAutoLaunch();
+  createTray();
+
+  const loginSettings = app.getLoginItemSettings();
+  const startedHidden =
+    loginSettings.wasOpenedAtLogin && loginSettings.wasOpenedAsHidden;
+  if (!startedHidden) createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    createWindow();
   });
 });
 
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  // Keep running in the background (tray is alive). Do not quit on
+  // window close; the user must choose Quit from the tray menu.
 });
