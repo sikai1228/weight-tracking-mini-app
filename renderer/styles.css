@@ -372,6 +372,14 @@ nav {
   font-variant-numeric: normal;
 }
 
+.stat-secondary {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-2);
+  margin-top: 6px;
+  line-height: 1.3;
+}
+
 
 .stat-edit-input {
   font: inherit;
@@ -605,7 +613,16 @@ nav {
 /* SVG chart */
 svg .grid-line { stroke: var(--border); stroke-width: 0.5; }
 svg .chart-line { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+svg .chart-rolling { stroke-width: 2; }
+svg .chart-regression {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+  opacity: 0.5;
+}
 svg .chart-dot { fill: var(--text-3); pointer-events: none; }
+svg .chart-dot-raw { opacity: 0.3; }
 svg .chart-dot-hit { fill: transparent; cursor: pointer; }
 svg .goal-line { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 4; }
 svg .axis-label { fill: var(--text-3); font-size: 10px; font-family: var(--font); }

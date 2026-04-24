@@ -81,40 +81,6 @@ export function estimateWeightAt(entries, targetIso) {
   return null;
 }
 
-export function projectGoalDate(entries, goal, windowDays = 30) {
-  if (goal == null || entries.length < 3) return null;
-  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
-  const latest = sorted[sorted.length - 1];
-  const windowStart = addDays(latest.date, -(windowDays - 1));
-  const points = sorted.filter((e) => e.date >= windowStart);
-  if (points.length < 3) return null;
-
-  const x0 = parseISO(points[0].date).getTime();
-  const xs = points.map((p) => (parseISO(p.date).getTime() - x0) / MS_PER_DAY);
-  const ys = points.map((p) => p.weight);
-  const n = xs.length;
-  const sumX = xs.reduce((a, b) => a + b, 0);
-  const sumY = ys.reduce((a, b) => a + b, 0);
-  const sumXY = xs.reduce((s, x, i) => s + x * ys[i], 0);
-  const sumXX = xs.reduce((s, x) => s + x * x, 0);
-  const denom = n * sumXX - sumX * sumX;
-  if (denom === 0) return null;
-  const slope = (n * sumXY - sumX * sumY) / denom;
-  const intercept = (sumY - slope * sumX) / n;
-  if (slope === 0) return null;
-
-  const latestX = (parseISO(latest.date).getTime() - x0) / MS_PER_DAY;
-  const currentProj = slope * latestX + intercept;
-  const needed = goal - currentProj;
-  if (Math.sign(slope) !== Math.sign(needed)) return null;
-
-  const targetX = (goal - intercept) / slope;
-  const daysFromLatest = targetX - latestX;
-  if (daysFromLatest <= 0) return latest.date;
-  if (daysFromLatest > 365 * 5) return null;
-  return addDays(latest.date, Math.round(daysFromLatest));
-}
-
 export function formatEstDate(iso) {
   return parseISO(iso).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',

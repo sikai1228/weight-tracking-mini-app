@@ -1,10 +1,11 @@
 import {
   todayISO, toISO, parseISO, addDays, daysBetween,
   formatFullDate, formatShortDate, formatEstDate, fmtWeight, fmtSignedWeight,
-  avg, rollingAverageWindow, weightChangePastDays, projectGoalDate,
+  avg, rollingAverageWindow, weightChangePastDays,
   progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
+import { estimateGoalDate, regressionLinePoints, computeRollingAverage } from './projections.js';
 
 const api = window.api;
 
@@ -313,18 +314,35 @@ function buildStatsRow() {
     },
   }));
 
-  const projectedIso = projectGoalDate(state.entries, state.meta.goal);
+  const estimate = estimateGoalDate(state.entries, state.meta.goal);
   row.appendChild(buildStatCard({
     label: 'Estimated time',
-    value: projectedIso,
+    value: estimate.date,
     kind: 'date',
     editable: false,
+    secondary: formatEstimateSecondary(estimate),
   }));
 
   return row;
 }
 
-function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
+function formatEstimateSecondary(estimate) {
+  if (estimate.date == null) {
+    switch (estimate.reason) {
+      case 'insufficient_data': return 'Need 14+ days of data';
+      case 'plateau': return 'Plateau, no clear trend';
+      case 'wrong_direction': return 'Trending away from goal';
+      case 'too_far': return 'More than 2 years out';
+      default: return '';
+    }
+  }
+  const rate = estimate.weeklyRate;
+  const rateStr = (rate >= 0 ? '+' : '−') + Math.abs(rate).toFixed(2);
+  const r2 = estimate.rSquared.toFixed(2);
+  return `${rateStr} lbs/week · R² ${r2}`;
+}
+
+function buildStatCard({ label, value, kind = 'weight', editable, onSave, secondary }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
@@ -367,6 +385,13 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
   }
 
   card.appendChild(valueEl);
+
+  if (secondary) {
+    const sub = document.createElement('div');
+    sub.className = 'stat-secondary';
+    sub.textContent = secondary;
+    card.appendChild(sub);
+  }
 
   if (editable) {
     editBtn.addEventListener('click', () => {
@@ -578,12 +603,20 @@ function renderTrends(root) {
 
   const chartWrap = document.createElement('div');
   chartWrap.style.height = '360px';
-  const rolling = rollingSeries(windowPoints, 7);
+  const bounds = rangedBounds();
+  const allRolling = computeRollingAverage(state.entries, 7);
+  const rolling = allRolling
+    .filter((r) => r.date >= bounds.start && r.date <= bounds.end)
+    .map((r) => ({ date: r.date, weight: r.value }));
+  const regression = state.trendsRange === '7D'
+    ? null
+    : regressionLinePoints(state.entries, bounds);
   chartWrap.appendChild(trendChart({
     points: windowPoints,
     goal: state.meta.goal,
     rolling,
-    xBounds: rangedBounds(),
+    regression: regression ? regression.points : null,
+    xBounds: bounds,
   }));
   card.appendChild(chartWrap);
 
@@ -609,17 +642,6 @@ function rangedBounds() {
   return { start: addDays(today, -(days - 1)), end: today };
 }
 
-function rollingSeries(points, windowDays) {
-  if (!points.length) return [];
-  const result = [];
-  for (const p of points) {
-    const start = addDays(p.date, -(windowDays - 1));
-    const win = points.filter((x) => x.date >= start && x.date <= p.date);
-    const a = avg(win.map((x) => x.weight));
-    if (a != null) result.push({ date: p.date, weight: a });
-  }
-  return result;
-}
 
 /* ---------- History ---------- */
 

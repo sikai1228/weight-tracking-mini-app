@@ -7,7 +7,8 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "test": "node scripts/test-projections.mjs"
   },
   "devDependencies": {
     "electron": "^41.3.0",

@@ -175,7 +175,7 @@ export function sparkline({ points, width = 560, height = 120 }) {
   return svg;
 }
 
-export function trendChart({ points, goal, rolling, xBounds, width = 800, height = 360 }) {
+export function trendChart({ points, goal, rolling, regression, xBounds, width = 800, height = 360 }) {
   const wrap = document.createElement('div');
   wrap.className = 'trend-chart-wrap';
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
@@ -191,7 +191,10 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
     return wrap;
   }
   const padding = { top: 16, right: 16, bottom: 28, left: 40 };
-  const yBounds = trendYBounds(points, goal);
+  const allForBounds = [...points];
+  if (rolling) allForBounds.push(...rolling);
+  if (regression) allForBounds.push(...regression);
+  const yBounds = trendYBounds(allForBounds, goal);
   const { x, y, min, max } = computeScales(points, width, height, padding, goal, yBounds, xBounds);
 
   for (let v = min; v <= max + 0.001; v += 5) {
@@ -237,14 +240,21 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
   for (const p of points) {
     svg.appendChild(el('circle', {
       cx: x(p.date), cy: y(p.weight),
-      r: 3,
-      class: 'chart-dot',
+      r: 2.5,
+      class: 'chart-dot chart-dot-raw',
     }));
+  }
+
+  if (regression && regression.length >= 2) {
+    const d = regression
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`)
+      .join(' ');
+    svg.appendChild(el('path', { d, class: 'chart-regression' }));
   }
 
   if (rolling && rolling.length > 1) {
     const d = rolling.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`).join(' ');
-    svg.appendChild(el('path', { d, class: 'chart-line' }));
+    svg.appendChild(el('path', { d, class: 'chart-line chart-rolling' }));
   }
 
   for (let i = 0; i < points.length; i++) {
