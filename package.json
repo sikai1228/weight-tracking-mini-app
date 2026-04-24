@@ -1,0 +1,15 @@
+{
+  "name": "weight-tracking-mini-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only weight tracking desktop app",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node scripts/smoke.js"
+  },
+  "devDependencies": {
+    "electron": "^41.3.0",
+    "xlsx": "^0.18.5"
+  }
+}
