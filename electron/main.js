@@ -63,6 +63,9 @@ function createTray() {
     }
   }
 
+  // Menu-bar icons on macOS read better as template images (monochrome,
+  // tinted automatically for light/dark mode). The sidebar and dock stay
+  // full color from assets/logo.png.
   if (image && process.platform === 'darwin') {
     image.setTemplateImage(true);
   }
@@ -108,6 +111,17 @@ app.whenReady().then(() => {
   reminder.start();
 
   setupAutoLaunch();
+  if (process.platform === 'darwin' && app.dock) {
+    const logoPath = path.join(__dirname, '..', 'assets', 'logo.png');
+    if (fs.existsSync(logoPath)) {
+      try {
+        const dockImage = nativeImage.createFromPath(logoPath);
+        if (!dockImage.isEmpty()) app.dock.setIcon(dockImage);
+      } catch (err) {
+        console.error('[dock] failed to set icon:', err);
+      }
+    }
+  }
   createTray();
 
   const loginSettings = app.getLoginItemSettings();
