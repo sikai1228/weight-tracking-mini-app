@@ -29,6 +29,14 @@ const views = {
 
 async function boot() {
   await refresh();
+  if (typeof api.onDataUpdated === 'function') {
+    api.onDataUpdated(async () => {
+      await refresh();
+      updateUnitToggle();
+      updateModeToggle();
+      render();
+    });
+  }
   document.querySelectorAll('.nav-item').forEach((btn) => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });

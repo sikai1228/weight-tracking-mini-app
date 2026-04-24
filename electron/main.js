@@ -5,6 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const { createApi } = require('../backend');
 const { registerIpc } = require('./ipc');
+const { registerReminder } = require('./reminder');
+
+let mainWindow = null;
 
 function migrateLegacyData(userDataDir) {
   const target = path.join(userDataDir, 'data.json');
@@ -31,7 +34,9 @@ function createWindow() {
     },
   });
 
+  mainWindow = win;
   win.once('ready-to-show', () => win.show());
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 }
 
@@ -40,6 +45,8 @@ app.whenReady().then(() => {
   migrateLegacyData(userDataDir);
   const api = createApi({ dataDir: userDataDir });
   registerIpc(api);
+  const reminder = registerReminder({ api, getMainWindow: () => mainWindow });
+  reminder.start();
   createWindow();
 
   app.on('activate', () => {

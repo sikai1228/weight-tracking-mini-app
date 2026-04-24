@@ -5,6 +5,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 
 contextBridge.exposeInMainWorld('api', {
+  onDataUpdated: (cb) => {
+    const handler = () => { try { cb(); } catch (err) { console.error(err); } };
+    ipcRenderer.on('data-updated', handler);
+    return () => ipcRenderer.removeListener('data-updated', handler);
+  },
   entries: {
     list: () => invoke('entries:list'),
     upsert: (payload) => invoke('entries:upsert', payload),

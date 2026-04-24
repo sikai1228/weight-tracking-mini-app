@@ -4,7 +4,17 @@ const fs = require('fs').promises;
 const path = require('path');
 
 function emptyState() {
-  return { unit: 'lb', mode: 'bulk', goal: null, startWeight: null, startDate: null, entries: [] };
+  return {
+    unit: 'lb',
+    mode: 'bulk',
+    goal: null,
+    startWeight: null,
+    startDate: null,
+    remindersEnabled: true,
+    reminderTime: '08:00',
+    lastReminderDate: null,
+    entries: [],
+  };
 }
 
 function createStorage(dataDir) {
@@ -28,6 +38,9 @@ function createStorage(dataDir) {
         goal: parsed.goal ?? null,
         startWeight: parsed.startWeight ?? null,
         startDate: parsed.startDate ?? null,
+        remindersEnabled: parsed.remindersEnabled !== false,
+        reminderTime: parsed.reminderTime ?? '08:00',
+        lastReminderDate: parsed.lastReminderDate ?? null,
         entries: Array.isArray(parsed.entries) ? parsed.entries : [],
       };
     } catch (err) {

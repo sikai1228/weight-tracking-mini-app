@@ -31,6 +31,22 @@ function createMetaApi(storage) {
     });
   }
 
+  async function getReminder() {
+    const state = await storage.load();
+    return {
+      remindersEnabled: state.remindersEnabled !== false,
+      reminderTime: state.reminderTime ?? '08:00',
+      lastReminderDate: state.lastReminderDate ?? null,
+    };
+  }
+
+  async function setLastReminderDate(date) {
+    return storage.update((state) => {
+      state.lastReminderDate = date;
+      return { lastReminderDate: date };
+    });
+  }
+
   async function setup({ startWeight, goal, startDate }) {
     assertPositiveNumber(startWeight, 'startWeight');
     assertPositiveNumber(goal, 'goal');
@@ -60,7 +76,11 @@ function createMetaApi(storage) {
     });
   }
 
-  return { get, setup, updateStartWeight, updateGoal, updateUnit, updateMode };
+  return {
+    get, setup,
+    updateStartWeight, updateGoal, updateUnit, updateMode,
+    getReminder, setLastReminderDate,
+  };
 }
 
 module.exports = { createMetaApi };
