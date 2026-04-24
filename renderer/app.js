@@ -298,22 +298,32 @@ function alertDialog({ title, message, confirmLabel = 'OK' }) {
     backdrop.appendChild(dialog);
     root.appendChild(backdrop);
 
-    const close = () => {
-      if (backdrop.isConnected) root.removeChild(backdrop);
-      document.removeEventListener('keydown', onKey);
-      resolve();
-    };
+    let closed = false;
     const onKey = (e) => {
       if (e.key === 'Escape' || e.key === 'Enter') close();
     };
+    const onBackdrop = (e) => {
+      if (e.target === backdrop) close();
+    };
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      if (backdrop.isConnected) root.removeChild(backdrop);
+      document.removeEventListener('keydown', onKey);
+      backdrop.removeEventListener('click', onBackdrop);
+      resolve();
+    };
     btn.addEventListener('click', close);
     dialog.addEventListener('click', (e) => e.stopPropagation());
-    document.addEventListener('keydown', onKey);
+
+    // Defer so the keypress or click that triggered this modal
+    // doesn't immediately close it on bubble.
     setTimeout(() => {
-      backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) close();
-      });
+      if (closed) return;
+      document.addEventListener('keydown', onKey);
+      backdrop.addEventListener('click', onBackdrop);
     }, 0);
+
     btn.focus();
   });
 }
