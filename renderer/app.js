@@ -450,9 +450,6 @@ function buildSparklineCard() {
       render();
     },
   }));
-  const afterWord = document.createElement('span');
-  afterWord.textContent = 'days';
-  title.appendChild(afterWord);
   header.appendChild(title);
 
   const deltaEl = document.createElement('div');
@@ -708,7 +705,7 @@ function renderHistory(root) {
   footer.className = 'history-footer';
   const exportBtn = document.createElement('button');
   exportBtn.className = 'btn-ghost';
-  exportBtn.textContent = 'Export CSV';
+  exportBtn.textContent = 'Export to CSV';
   exportBtn.addEventListener('click', async () => {
     const csv = await api.stats.exportCsv();
     downloadCsv(csv);
