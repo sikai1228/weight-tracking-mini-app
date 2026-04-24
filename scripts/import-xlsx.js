@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const XLSX = require('xlsx');
 
-const APP_NAME = 'weight-tracking-mini-app';
+const APP_NAME = 'Weight Tracker';
 const DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
 function userDataDir() {

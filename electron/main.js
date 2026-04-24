@@ -1,9 +1,19 @@
 'use strict';
 
 const { app, BrowserWindow } = require('electron');
+const fs = require('fs');
 const path = require('path');
 const { createApi } = require('../backend');
 const { registerIpc } = require('./ipc');
+
+function migrateLegacyData(userDataDir) {
+  const target = path.join(userDataDir, 'data.json');
+  if (fs.existsSync(target)) return;
+  const legacy = path.join(app.getPath('appData'), 'weight-tracking-mini-app', 'data.json');
+  if (!fs.existsSync(legacy)) return;
+  fs.mkdirSync(userDataDir, { recursive: true });
+  fs.copyFileSync(legacy, target);
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -26,7 +36,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const api = createApi({ dataDir: app.getPath('userData') });
+  const userDataDir = app.getPath('userData');
+  migrateLegacyData(userDataDir);
+  const api = createApi({ dataDir: userDataDir });
   registerIpc(api);
   createWindow();
 

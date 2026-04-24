@@ -1,5 +1,6 @@
 {
   "name": "weight-tracking-mini-app",
+  "productName": "Weight Tracker",
   "version": "0.1.0",
   "private": true,
   "description": "Local-only weight tracking desktop app",

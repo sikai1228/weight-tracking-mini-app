@@ -25,9 +25,9 @@ npm start
 On first launch the app will prompt for a starting weight and goal. All data is
 stored in a single `data.json` file inside the OS per-user app support directory:
 
-- macOS: `~/Library/Application Support/weight-tracking-mini-app/data.json`
-- Windows: `%APPDATA%/weight-tracking-mini-app/data.json`
-- Linux: `~/.config/weight-tracking-mini-app/data.json`
+- macOS: `~/Library/Application Support/Weight Tracker/data.json`
+- Windows: `%APPDATA%/Weight Tracker/data.json`
+- Linux: `~/.config/Weight Tracker/data.json`
 
 ## Views
 
