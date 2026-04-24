@@ -17,8 +17,8 @@ const state = {
   view: 'today',
   meta: null,
   entries: [],
-  sparklineRange: '1M',
-  trendsRange: '1M',
+  sparklineRange: 'All',
+  trendsRange: 'All',
 };
 
 const views = {
@@ -248,7 +248,7 @@ function buildHeroCard() {
       delta.textContent = 'Not enough data yet';
     } else {
       delta.classList.add(signClass(weeklyDelta));
-      delta.textContent = `${formatSignedWeight(weeklyDelta, unit)} ${unitLabel(unit)} the past seven days`;
+      delta.textContent = `${formatSignedWeight(weeklyDelta, unit)} ${unitLabel(unit)} in the past seven days`;
     }
     left.appendChild(delta);
   } else {
