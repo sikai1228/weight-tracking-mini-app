@@ -439,6 +439,9 @@ function buildSparklineCard() {
 
   const title = document.createElement('div');
   title.className = 'sparkline-title';
+  const beforeWord = document.createElement('span');
+  beforeWord.textContent = 'Last';
+  title.appendChild(beforeWord);
   title.appendChild(buildRangeDropdown({
     options: Object.keys(RANGE_DAYS),
     value: state.sparklineRange,
@@ -447,6 +450,9 @@ function buildSparklineCard() {
       render();
     },
   }));
+  const afterWord = document.createElement('span');
+  afterWord.textContent = 'days';
+  title.appendChild(afterWord);
   header.appendChild(title);
 
   const deltaEl = document.createElement('div');
@@ -458,7 +464,7 @@ function buildSparklineCard() {
 
   const chartWrap = document.createElement('div');
   chartWrap.style.height = '120px';
-  chartWrap.appendChild(sparkline({ points, goal: state.meta.goal }));
+  chartWrap.appendChild(sparkline({ points }));
   card.appendChild(chartWrap);
 
   return card;

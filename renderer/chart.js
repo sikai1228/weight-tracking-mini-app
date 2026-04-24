@@ -144,7 +144,7 @@ function trendYBounds(points, goal) {
   return { min: yMin, max: yMax };
 }
 
-export function sparkline({ points, goal, width = 560, height = 120 }) {
+export function sparkline({ points, width = 560, height = 120 }) {
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
   if (!points.length) {
     const text = el('text', {
@@ -157,15 +157,18 @@ export function sparkline({ points, goal, width = 560, height = 120 }) {
     return svg;
   }
   const padding = { top: 12, right: 8, bottom: 12, left: 8 };
-  const { x, y } = computeScales(points, width, height, padding, goal);
 
-  if (goal != null) {
-    svg.appendChild(el('line', {
-      x1: padding.left, x2: width - padding.right,
-      y1: y(goal), y2: y(goal),
-      class: 'goal-line',
-    }));
-  }
+  const weights = points.map((p) => p.weight);
+  const minW = Math.min(...weights);
+  const maxW = Math.max(...weights);
+  const center = (minW + maxW) / 2;
+  const halfRange = maxW - center;
+  const vertPad = Math.max(halfRange * 0.3, 1);
+  const yBounds = {
+    min: center - halfRange - vertPad,
+    max: center + halfRange + vertPad,
+  };
+  const { x, y } = computeScales(points, width, height, padding, null, yBounds);
 
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`).join(' ');
   svg.appendChild(el('path', { d, class: 'chart-line' }));
