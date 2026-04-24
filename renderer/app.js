@@ -50,7 +50,8 @@ async function attemptModeSwitch(newMode) {
   if (state.meta.mode === newMode) return;
   const current = currentWeightForValidation();
   const goal = state.meta.goal;
-  const needsGoalUpdate = goal != null && current != null && !isGoalValidForMode(goal, current, newMode);
+  const preValidation = validateGoal(goal, newMode, current, state.meta.unit);
+  const needsGoalUpdate = goal != null && current != null && !preValidation.valid;
 
   if (!needsGoalUpdate) {
     await api.meta.setMode(newMode);
@@ -69,7 +70,9 @@ async function attemptModeSwitch(newMode) {
     render();
     return;
   }
-  if (!isGoalValidForMode(newGoal, current, newMode)) {
+  const postValidation = validateGoal(newGoal, newMode, current, state.meta.unit);
+  if (!postValidation.valid) {
+    await alertDialog({ title: postValidation.title, message: postValidation.message });
     render();
     return;
   }
@@ -87,10 +90,81 @@ function currentWeightForValidation() {
   return state.meta.startWeight;
 }
 
-function isGoalValidForMode(goal, current, mode) {
-  if (goal == null || current == null) return true;
-  if (mode === 'bulk') return goal > current;
-  return goal < current;
+function validateGoal(newGoal, mode, currentWeight, unit) {
+  if (newGoal == null || !Number.isFinite(newGoal) || newGoal <= 0) {
+    return { valid: false, title: 'Invalid goal', message: 'Please enter a positive number.' };
+  }
+  if (currentWeight == null) return { valid: true };
+  const label = unitLabel(unit);
+  const curStr = `${formatWeight(currentWeight, unit)} ${label}`;
+  const newStr = `${formatWeight(newGoal, unit)} ${label}`;
+  if (mode === 'bulk' && newGoal <= currentWeight) {
+    return {
+      valid: false,
+      title: 'Invalid goal',
+      message: `In bulk mode, your goal must be higher than your current weight (${curStr}). You tried to set ${newStr}.`,
+    };
+  }
+  if (mode === 'cut' && newGoal >= currentWeight) {
+    return {
+      valid: false,
+      title: 'Invalid goal',
+      message: `In cut mode, your goal must be lower than your current weight (${curStr}). You tried to set ${newStr}.`,
+    };
+  }
+  return { valid: true };
+}
+
+function validateStartWeight(newStart, mode, goal, unit) {
+  if (newStart == null || !Number.isFinite(newStart) || newStart <= 0) {
+    return { valid: false, title: 'Invalid start weight', message: 'Please enter a positive number.' };
+  }
+  if (goal == null) return { valid: true };
+  const label = unitLabel(unit);
+  const goalStr = `${formatWeight(goal, unit)} ${label}`;
+  const newStr = `${formatWeight(newStart, unit)} ${label}`;
+  if (mode === 'bulk' && newStart >= goal) {
+    return {
+      valid: false,
+      title: 'Invalid start weight',
+      message: `In bulk mode, your start weight must be lower than your goal (${goalStr}). You tried to set ${newStr}.`,
+    };
+  }
+  if (mode === 'cut' && newStart <= goal) {
+    return {
+      valid: false,
+      title: 'Invalid start weight',
+      message: `In cut mode, your start weight must be higher than your goal (${goalStr}). You tried to set ${newStr}.`,
+    };
+  }
+  return { valid: true };
+}
+
+async function saveGoal(newGoal) {
+  const current = currentWeightForValidation();
+  const result = validateGoal(newGoal, state.meta.mode, current, state.meta.unit);
+  if (!result.valid) {
+    await alertDialog({ title: result.title, message: result.message });
+    render();
+    return false;
+  }
+  await api.meta.setGoal(newGoal);
+  await refresh();
+  render();
+  return true;
+}
+
+async function saveStartWeight(newStart) {
+  const result = validateStartWeight(newStart, state.meta.mode, state.meta.goal, state.meta.unit);
+  if (!result.valid) {
+    await alertDialog({ title: result.title, message: result.message });
+    render();
+    return false;
+  }
+  await api.meta.setStartWeight(newStart);
+  await refresh();
+  render();
+  return true;
 }
 
 function directionClass(delta, mode = state.meta?.mode ?? 'bulk') {
@@ -233,6 +307,10 @@ function alertDialog({ title, message, confirmLabel = 'OK' }) {
       if (e.key === 'Escape' || e.key === 'Enter') close();
     };
     btn.addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) close();
+    });
+    dialog.addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('keydown', onKey);
     btn.focus();
   });
@@ -280,6 +358,10 @@ function goalUpdateDialog({ newMode, currentWeight, currentGoal, unit }) {
     suffix.textContent = unitLabel(unit);
     inputWrap.appendChild(suffix);
     field.appendChild(inputWrap);
+
+    const errorMsg = document.createElement('p');
+    errorMsg.className = 'field-error';
+    field.appendChild(errorMsg);
     dialog.appendChild(field);
 
     const actions = document.createElement('div');
@@ -304,9 +386,19 @@ function goalUpdateDialog({ newMode, currentWeight, currentGoal, unit }) {
       return newMode === 'bulk' ? base > currentWeight : base < currentWeight;
     };
 
+    const curLabel = `${formatWeight(currentWeight, unit)} ${unitLabel(unit)}`;
     input.addEventListener('input', () => {
       const v = Number(input.value);
       saveBtn.disabled = !isValid(v);
+      if (!input.value || !(v > 0)) {
+        errorMsg.textContent = '';
+      } else if (!isValid(v)) {
+        errorMsg.textContent = newMode === 'bulk'
+          ? `Goal must be higher than ${curLabel}.`
+          : `Goal must be lower than ${curLabel}.`;
+      } else {
+        errorMsg.textContent = '';
+      }
     });
 
     const close = (result) => {
@@ -532,26 +624,7 @@ function buildStatsRow() {
     value: state.meta.startWeight,
     unit,
     editable: true,
-    onSave: async (v) => {
-      const goal = state.meta.goal;
-      const mode = state.meta.mode;
-      const invalid = goal != null && (
-        (mode === 'bulk' && v >= goal) ||
-        (mode === 'cut' && v <= goal)
-      );
-      if (invalid) {
-        const direction = mode === 'bulk' ? 'less' : 'greater';
-        await alertDialog({
-          title: 'Invalid starting weight',
-          message: `In ${mode} mode, your starting weight must be ${direction} than your goal (${formatWeight(goal, unit)} ${unitLabel(unit)}). Your starting weight has been reverted.`,
-        });
-        render();
-        return;
-      }
-      await api.meta.setStartWeight(v);
-      await refresh();
-      render();
-    },
+    onSave: (v) => saveStartWeight(v),
   }));
 
   row.appendChild(buildStatCard({
@@ -559,21 +632,7 @@ function buildStatsRow() {
     value: state.meta.goal,
     unit,
     editable: true,
-    onSave: async (v) => {
-      const current = currentWeightForValidation();
-      if (!isGoalValidForMode(v, current, state.meta.mode)) {
-        const direction = state.meta.mode === 'bulk' ? 'higher' : 'lower';
-        await alertDialog({
-          title: 'Invalid goal',
-          message: `In ${state.meta.mode} mode, your goal must be ${direction} than your current weight (${formatWeight(current, unit)} ${unitLabel(unit)}). Your goal has been reverted.`,
-        });
-        render();
-        return;
-      }
-      await api.meta.setGoal(v);
-      await refresh();
-      render();
-    },
+    onSave: (v) => saveGoal(v),
   }));
 
   const estimate = estimateGoalDate(state.entries, state.meta.goal, { mode: state.meta.mode });
