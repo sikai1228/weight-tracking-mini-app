@@ -208,7 +208,7 @@ function showSetupModal() {
 
 function renderToday(root) {
   const container = document.createElement('div');
-  container.className = 'view';
+  container.className = 'view view-centered';
 
   container.appendChild(buildHeroCard());
   container.appendChild(buildLogCard());
