@@ -64,6 +64,33 @@ export function rollingAverageWindow(entries, endIso, windowDays) {
   return avg(filtered.map((e) => e.weight));
 }
 
+export function estimateWeightAt(entries, targetIso) {
+  if (!entries.length) return null;
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const exact = sorted.find((e) => e.date === targetIso);
+  if (exact) return exact.weight;
+  let before = null;
+  let after = null;
+  for (const e of sorted) {
+    if (e.date < targetIso) before = e;
+    else if (e.date > targetIso) { after = e; break; }
+  }
+  if (before && after) return (before.weight + after.weight) / 2;
+  if (before) return before.weight;
+  if (after) return after.weight;
+  return null;
+}
+
+export function weightChangePastDays(entries, days) {
+  if (entries.length < 2) return null;
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const latest = sorted[sorted.length - 1];
+  const target = addDays(latest.date, -days);
+  const estimate = estimateWeightAt(sorted.slice(0, -1), target);
+  if (estimate == null) return null;
+  return latest.weight - estimate;
+}
+
 export function progressPct(current, start, goal) {
   if (current == null || start == null || goal == null) return null;
   if (goal === start) return current === goal ? 100 : 0;

@@ -1,7 +1,7 @@
 import {
   todayISO, toISO, parseISO, addDays, daysBetween,
   formatFullDate, formatShortDate, fmtWeight, fmtSignedWeight,
-  avg, rollingAverageWindow, progressPct, signClass, entriesInRange,
+  avg, rollingAverageWindow, weightChangePastDays, progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 
@@ -180,10 +180,9 @@ function buildHeroCard() {
 
   const today = todayISO();
   const sevenDay = rollingAverageWindow(state.entries, today, 7);
-  const prior = rollingAverageWindow(state.entries, addDays(today, -7), 7);
   const latest = state.entries.length ? state.entries[state.entries.length - 1].weight : null;
   const display = sevenDay ?? latest;
-  const weeklyDelta = sevenDay != null && prior != null ? sevenDay - prior : null;
+  const weeklyDelta = weightChangePastDays(state.entries, 7);
 
   const left = document.createElement('div');
   const dateEl = document.createElement('div');
