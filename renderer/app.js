@@ -7,6 +7,7 @@ import {
 import { progressRing, sparkline, trendChart } from './chart.js';
 import { estimateGoalDate, regressionLinePoints } from './projections.js';
 import { createDatePicker } from './datepicker.js';
+import { createTimePicker } from './timepicker.js';
 import {
   formatWeight, formatSignedWeight, unitLabel, toBase, fromBase, axisStep,
 } from './units.js';
@@ -1187,17 +1188,8 @@ function toggleControl({ value, onChange, disabled = false, ariaLabel }) {
 }
 
 function timePicker({ value, onChange, disabled = false }) {
-  const input = document.createElement('input');
-  input.type = 'time';
-  input.step = '60';
-  input.value = value || '08:00';
-  input.className = 'settings-time-input';
-  if (disabled) input.disabled = true;
-  input.addEventListener('change', () => {
-    if (!input.value) return;
-    onChange(input.value);
-  });
-  return input;
+  const picker = createTimePicker({ value, onChange, disabled });
+  return picker.element;
 }
 
 async function renderSettings(root) {
@@ -1236,6 +1228,12 @@ async function renderSettings(root) {
         description: 'Bulk for gaining weight, cut for losing.',
         control: modeControl,
       }),
+    ],
+  }));
+
+  container.appendChild(settingsSection({
+    title: 'Display',
+    rows: [
       settingRow({
         label: 'Unit',
         description: 'Display weights in pounds or kilograms.',
