@@ -237,6 +237,13 @@ export function trendChart({ points, goal, rolling, regression, xBounds, width =
     }));
   }
 
+  if (points.length > 1) {
+    const d = points
+      .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`)
+      .join(' ');
+    svg.appendChild(el('path', { d, class: 'chart-raw-line' }));
+  }
+
   for (const p of points) {
     svg.appendChild(el('circle', {
       cx: x(p.date), cy: y(p.weight),
