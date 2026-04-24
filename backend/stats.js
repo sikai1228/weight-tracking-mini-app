@@ -5,6 +5,7 @@ function createStatsApi(storage) {
     const state = await storage.load();
     return {
       meta: {
+        unit: state.unit ?? 'lb',
         goal: state.goal,
         startWeight: state.startWeight,
         startDate: state.startDate,
@@ -14,11 +15,15 @@ function createStatsApi(storage) {
     };
   }
 
-  async function exportCsv() {
+  async function exportCsv(unit = 'lb') {
     const state = await storage.load();
     const rows = [...state.entries].sort((a, b) => a.date.localeCompare(b.date));
-    const lines = ['date,weight'];
-    for (const r of rows) lines.push(`${r.date},${r.weight}`);
+    const factor = unit === 'kg' ? 1 / 2.20462 : 1;
+    const lines = [`date,weight_${unit}`];
+    for (const r of rows) {
+      const value = r.weight * factor;
+      lines.push(`${r.date},${value.toFixed(2)}`);
+    }
     return lines.join('\n') + '\n';
   }
 

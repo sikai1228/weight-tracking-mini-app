@@ -9,12 +9,15 @@
   <body>
     <div id="app">
       <aside class="sidebar">
-        <div class="brand">Weight Tracker</div>
-        <nav>
-          <button class="nav-item" data-view="today">Today</button>
-          <button class="nav-item" data-view="trends">Trends</button>
-          <button class="nav-item" data-view="history">History</button>
-        </nav>
+        <div class="sidebar-top">
+          <div class="brand">Weight Tracker</div>
+          <nav>
+            <button class="nav-item" data-view="today">Today</button>
+            <button class="nav-item" data-view="trends">Trends</button>
+            <button class="nav-item" data-view="history">History</button>
+          </nav>
+        </div>
+        <div class="sidebar-bottom" id="sidebar-bottom"></div>
       </aside>
       <main class="content" id="view"></main>
     </div>

@@ -12,6 +12,12 @@ async function main() {
 
   const initial = await api.meta.get();
   assert.equal(initial.isConfigured, false);
+  assert.equal(initial.unit, 'lb');
+
+  await api.meta.updateUnit('kg');
+  assert.equal((await api.meta.get()).unit, 'kg');
+  await api.meta.updateUnit('lb');
+  assert.equal((await api.meta.get()).unit, 'lb');
 
   await api.meta.setup({ startWeight: 115, goal: 145, startDate: '2025-09-01' });
   const configured = await api.meta.get();
@@ -40,9 +46,12 @@ async function main() {
   assert.equal(updated.goal, 140);
   assert.equal(updated.startWeight, 116);
 
-  const csv = await api.stats.exportCsv();
-  assert.ok(csv.startsWith('date,weight\n'));
-  assert.ok(csv.includes('2026-04-24,118.6\n'));
+  const csvLb = await api.stats.exportCsv('lb');
+  assert.ok(csvLb.startsWith('date,weight_lb\n'));
+  assert.ok(csvLb.includes('2026-04-24,118.60\n'));
+  const csvKg = await api.stats.exportCsv('kg');
+  assert.ok(csvKg.startsWith('date,weight_kg\n'));
+  assert.ok(csvKg.includes('2026-04-24,53.80\n'));
 
   const removed = await api.entries.remove('2026-04-20');
   assert.equal(removed, true);

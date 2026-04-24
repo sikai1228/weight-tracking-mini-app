@@ -1,12 +1,15 @@
 import {
   todayISO, toISO, parseISO, addDays, daysBetween,
-  formatFullDate, formatShortDate, formatEstDate, fmtWeight, fmtSignedWeight,
+  formatFullDate, formatShortDate, formatEstDate,
   avg, rollingAverageWindow, weightChangePastDays,
   progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 import { estimateGoalDate, regressionLinePoints } from './projections.js';
 import { createDatePicker } from './datepicker.js';
+import {
+  formatWeight, formatSignedWeight, unitLabel, toBase, fromBase, axisStep,
+} from './units.js';
 
 const api = window.api;
 
@@ -29,10 +32,44 @@ async function boot() {
   document.querySelectorAll('.nav-item').forEach((btn) => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
+  const bottomMount = document.getElementById('sidebar-bottom');
+  if (bottomMount) {
+    bottomMount.appendChild(buildUnitToggle());
+    updateUnitToggle();
+  }
   if (!state.meta.isConfigured) {
     showSetupModal();
   }
   render();
+}
+
+function buildUnitToggle() {
+  const wrap = document.createElement('div');
+  wrap.className = 'unit-toggle';
+  wrap.setAttribute('role', 'group');
+  wrap.setAttribute('aria-label', 'Unit');
+  for (const key of ['lb', 'kg']) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'unit-seg';
+    btn.dataset.unit = key;
+    btn.textContent = key;
+    btn.addEventListener('click', async () => {
+      if (state.meta.unit === key) return;
+      await api.meta.setUnit(key);
+      await refresh();
+      updateUnitToggle();
+      render();
+    });
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+
+function updateUnitToggle() {
+  document.querySelectorAll('.unit-seg').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.unit === state.meta.unit);
+  });
 }
 
 async function refresh() {
@@ -119,16 +156,18 @@ function showSetupModal() {
 
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
+  const unit = state.meta.unit;
+  const label = unitLabel(unit);
   backdrop.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
       <h2>Welcome</h2>
       <p class="subtitle">Set your starting weight and goal to begin tracking.</p>
       <div class="field">
-        <label for="setup-start">Starting weight (lbs)</label>
+        <label for="setup-start">Starting weight (${label})</label>
         <input id="setup-start" type="number" step="0.1" min="1" inputmode="decimal" />
       </div>
       <div class="field">
-        <label for="setup-goal">Goal weight (lbs)</label>
+        <label for="setup-goal">Goal weight (${label})</label>
         <input id="setup-goal" type="number" step="0.1" min="1" inputmode="decimal" />
       </div>
       <div class="actions">
@@ -145,10 +184,12 @@ function showSetupModal() {
   startInput.focus();
 
   const submit = async () => {
-    const startWeight = Number(startInput.value);
-    const goal = Number(goalInput.value);
-    if (!(startWeight > 0) || !(goal > 0)) return;
+    const startEntered = Number(startInput.value);
+    const goalEntered = Number(goalInput.value);
+    if (!(startEntered > 0) || !(goalEntered > 0)) return;
     saveBtn.disabled = true;
+    const startWeight = toBase(startEntered, unit);
+    const goal = toBase(goalEntered, unit);
     await api.meta.setup({ startWeight, goal, startDate: todayISO() });
     await refresh();
     root.replaceChildren();
@@ -193,10 +234,11 @@ function buildHeroCard() {
   dateEl.textContent = formatFullDate(today);
   left.appendChild(dateEl);
 
+  const unit = state.meta.unit;
   if (display != null) {
     const weight = document.createElement('div');
     weight.className = 'hero-weight';
-    weight.innerHTML = `<span class="hero-number">${fmtWeight(display)}</span><span class="hero-unit">lbs</span>`;
+    weight.innerHTML = `<span class="hero-number">${formatWeight(display, unit)}</span><span class="hero-unit">${unitLabel(unit)}</span>`;
     left.appendChild(weight);
 
     const delta = document.createElement('div');
@@ -206,7 +248,7 @@ function buildHeroCard() {
       delta.textContent = 'Not enough data yet';
     } else {
       delta.classList.add(signClass(weeklyDelta));
-      delta.textContent = `${fmtSignedWeight(weeklyDelta)} lbs the past seven days`;
+      delta.textContent = `${formatSignedWeight(weeklyDelta, unit)} ${unitLabel(unit)} the past seven days`;
     }
     left.appendChild(delta);
   } else {
@@ -234,6 +276,8 @@ function buildHeroCard() {
 function buildLogCard() {
   const card = document.createElement('section');
   card.className = 'card';
+  const unit = state.meta.unit;
+  const label = unitLabel(unit);
   card.innerHTML = `
     <div class="card-header">
       <div class="card-label">Log weight</div>
@@ -243,7 +287,7 @@ function buildLogCard() {
         <label for="log-weight">Weight</label>
         <div class="weight-input">
           <input id="log-weight" type="number" step="0.1" min="1" inputmode="decimal" placeholder="0.0" />
-          <span class="suffix">lbs</span>
+          <span class="suffix">${label}</span>
         </div>
       </div>
       <div class="field">
@@ -264,21 +308,22 @@ function buildLogCard() {
     maxDate: new Date(),
     onChange: (iso) => {
       const existing = state.entries.find((e) => e.date === iso);
-      weightInput.value = existing ? existing.weight : '';
+      weightInput.value = existing ? formatWeight(existing.weight, unit) : '';
     },
   });
   dateMount.appendChild(picker.element);
 
   const existingToday = state.entries.find((e) => e.date === today);
-  if (existingToday) weightInput.value = existingToday.weight;
+  if (existingToday) weightInput.value = formatWeight(existingToday.weight, unit);
 
   const submit = async () => {
-    const w = Number(weightInput.value);
+    const entered = Number(weightInput.value);
     const d = picker.getValue();
-    if (!(w > 0) || !d) return;
+    if (!(entered > 0) || !d) return;
     saveBtn.disabled = true;
     try {
-      await api.entries.upsert({ date: d, weight: w });
+      const weightInBase = toBase(entered, unit);
+      await api.entries.upsert({ date: d, weight: weightInBase });
       await refresh();
       render();
     } catch (err) {
@@ -296,10 +341,12 @@ function buildLogCard() {
 function buildStatsRow() {
   const row = document.createElement('div');
   row.className = 'stats-row';
+  const unit = state.meta.unit;
 
   row.appendChild(buildStatCard({
     label: 'Start',
     value: state.meta.startWeight,
+    unit,
     editable: true,
     onSave: async (v) => {
       await api.meta.setStartWeight(v);
@@ -311,6 +358,7 @@ function buildStatsRow() {
   row.appendChild(buildStatCard({
     label: 'Goal',
     value: state.meta.goal,
+    unit,
     editable: true,
     onSave: async (v) => {
       await api.meta.setGoal(v);
@@ -326,14 +374,14 @@ function buildStatsRow() {
     kind: 'date',
     editable: false,
     info: {
-      onClick: (anchor) => showProjectionInfo(estimate, state.meta.goal, anchor),
+      onClick: (anchor) => showProjectionInfo(estimate, state.meta.goal, state.meta.unit, anchor),
     },
   }));
 
   return row;
 }
 
-function buildStatCard({ label, value, kind = 'weight', editable, onSave, info }) {
+function buildStatCard({ label, value, kind = 'weight', unit = 'lb', editable, onSave, info }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
@@ -376,15 +424,15 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave, info }
   if (kind === 'date') {
     numEl.textContent = value == null ? '—' : formatEstDate(value);
   } else {
-    numEl.textContent = value == null ? '—' : fmtWeight(value);
+    numEl.textContent = value == null ? '—' : formatWeight(value, unit);
   }
   valueEl.appendChild(numEl);
 
   if (kind !== 'date') {
-    const unit = document.createElement('span');
-    unit.className = 'stat-unit';
-    unit.textContent = 'lbs';
-    valueEl.appendChild(unit);
+    const unitEl = document.createElement('span');
+    unitEl.className = 'stat-unit';
+    unitEl.textContent = unitLabel(unit);
+    valueEl.appendChild(unitEl);
   }
 
   card.appendChild(valueEl);
@@ -396,7 +444,7 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave, info }
       input.step = '0.1';
       input.min = '1';
       input.className = 'stat-edit-input';
-      input.value = value ?? '';
+      input.value = value == null ? '' : formatWeight(value, unit);
       numEl.replaceWith(input);
       input.focus();
       input.select();
@@ -409,9 +457,10 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave, info }
         if (finished) return;
         finished = true;
         document.removeEventListener('mousedown', onOutsideMouseDown, true);
-        const parsed = Number(input.value);
-        if (commit && parsed > 0 && parsed !== value) {
-          await onSave(parsed);
+        const parsedDisplay = Number(input.value);
+        const originalDisplay = value == null ? null : Number(formatWeight(value, unit));
+        if (commit && parsedDisplay > 0 && parsedDisplay !== originalDisplay) {
+          await onSave(toBase(parsedDisplay, unit));
         } else {
           render();
         }
@@ -447,7 +496,7 @@ function infoIcon() {
   </svg>`;
 }
 
-function showProjectionInfo(estimate, goalWeight, anchorEl) {
+function showProjectionInfo(estimate, goalWeight, unit, anchorEl) {
   const root = document.getElementById('modal-root');
   root.replaceChildren();
 
@@ -462,7 +511,7 @@ function showProjectionInfo(estimate, goalWeight, anchorEl) {
 
   const content = document.createElement('div');
   content.className = 'projection-popover-content';
-  content.innerHTML = projectionInfoHtml(estimate, goalWeight);
+  content.innerHTML = projectionInfoHtml(estimate, goalWeight, unit);
   popover.appendChild(content);
 
   root.appendChild(popover);
@@ -492,8 +541,9 @@ function showProjectionInfo(estimate, goalWeight, anchorEl) {
   document.addEventListener('keydown', onKey);
 }
 
-function projectionInfoHtml(estimate, goalWeight) {
+function projectionInfoHtml(estimate, goalWeight, unit) {
   const windowDays = estimate.windowDays ?? 30;
+  const label = unitLabel(unit);
   if (estimate.reason === 'insufficient_data') {
     return `Log at least <strong>14 days</strong> of weights to see a projection.`;
   }
@@ -501,25 +551,26 @@ function projectionInfoHtml(estimate, goalWeight) {
     return `Your weight has been steady over the past <strong>${windowDays} days</strong>. Log more entries to see a projection.`;
   }
   const direction = estimate.slope > 0 ? 'gaining' : 'losing';
-  const rate = Math.abs(estimate.weeklyRate).toFixed(2);
-  const goalStr = `${goalWeight} lb`;
+  const rate = Math.abs(fromBase(estimate.weeklyRate, unit)).toFixed(2);
+  const goalStr = `${formatWeight(goalWeight, unit)} ${label}`;
   if (estimate.reason === 'wrong_direction') {
-    return `You've been <strong>${direction} ${rate} lbs/week</strong> over the past <strong>${windowDays} days</strong>, which is moving away from your <strong>${goalStr} goal</strong>.`;
+    return `You've been <strong>${direction} ${rate} ${label}/week</strong> over the past <strong>${windowDays} days</strong>, which is moving away from your <strong>${goalStr} goal</strong>.`;
   }
   if (estimate.reason === 'too_far') {
-    return `At your current rate, reaching <strong>${goalWeight} lbs</strong> would take more than <strong>2 years</strong>. Consider adjusting your goal or your rate.`;
+    return `At your current rate, reaching <strong>${goalStr}</strong> would take more than <strong>2 years</strong>. Consider adjusting your goal or your rate.`;
   }
   const days = Math.round(estimate.daysToGoal);
   let confidence = 'low confidence';
   if (estimate.rSquared >= 0.7) confidence = 'high confidence';
   else if (estimate.rSquared >= 0.4) confidence = 'moderate confidence';
-  return `You've been <strong>${direction} ${rate} lbs/week</strong> over the past <strong>${windowDays} days</strong>. At this rate, you'll reach your <strong>${goalStr} goal</strong> in about <strong>${days} more days</strong>, with <strong>${confidence}</strong>.`;
+  return `You've been <strong>${direction} ${rate} ${label}/week</strong> over the past <strong>${windowDays} days</strong>. At this rate, you'll reach your <strong>${goalStr} goal</strong> in about <strong>${days} more days</strong>, with <strong>${confidence}</strong>.`;
 }
 
 function buildSparklineCard() {
   const card = document.createElement('section');
   card.className = 'card sparkline-card';
 
+  const unit = state.meta.unit;
   const today = todayISO();
   const days = RANGE_DAYS[state.sparklineRange];
   let points;
@@ -529,7 +580,7 @@ function buildSparklineCard() {
     const startIso = addDays(today, -(days - 1));
     points = entriesInRange(state.entries, startIso, today);
   }
-  const delta = points.length >= 2
+  const deltaBase = points.length >= 2
     ? points[points.length - 1].weight - points[0].weight
     : null;
 
@@ -552,15 +603,16 @@ function buildSparklineCard() {
   header.appendChild(title);
 
   const deltaEl = document.createElement('div');
-  deltaEl.className = `sparkline-delta ${signClass(delta)}`;
-  deltaEl.textContent = delta == null ? '—' : fmtSignedWeight(delta) + ' lbs';
+  deltaEl.className = `sparkline-delta ${signClass(deltaBase)}`;
+  deltaEl.textContent = deltaBase == null ? '—' : `${formatSignedWeight(deltaBase, unit)} ${unitLabel(unit)}`;
   header.appendChild(deltaEl);
 
   card.appendChild(header);
 
   const chartWrap = document.createElement('div');
   chartWrap.style.height = '120px';
-  chartWrap.appendChild(sparkline({ points }));
+  const displayPoints = points.map((p) => ({ date: p.date, weight: fromBase(p.weight, unit) }));
+  chartWrap.appendChild(sparkline({ points: displayPoints }));
   card.appendChild(chartWrap);
 
   return card;
@@ -662,13 +714,14 @@ function renderTrends(root) {
     segmented.appendChild(btn);
   }
 
+  const unit = state.meta.unit;
   const windowPoints = rangedPoints();
-  const delta = windowPoints.length >= 2
+  const deltaBase = windowPoints.length >= 2
     ? windowPoints[windowPoints.length - 1].weight - windowPoints[0].weight
     : null;
   const meta = document.createElement('div');
-  meta.className = `trend-delta ${signClass(delta)}`;
-  meta.textContent = delta == null ? '' : `${fmtSignedWeight(delta)} lbs`;
+  meta.className = `trend-delta ${signClass(deltaBase)}`;
+  meta.textContent = deltaBase == null ? '' : `${formatSignedWeight(deltaBase, unit)} ${unitLabel(unit)}`;
 
   header.appendChild(segmented);
   header.appendChild(meta);
@@ -680,11 +733,18 @@ function renderTrends(root) {
   const regression = state.trendsRange === '7D'
     ? null
     : regressionLinePoints(state.entries, bounds);
+  const displayWindow = windowPoints.map((p) => ({ date: p.date, weight: fromBase(p.weight, unit) }));
+  const displayGoal = state.meta.goal != null ? fromBase(state.meta.goal, unit) : null;
+  const displayRegression = regression
+    ? regression.points.map((p) => ({ date: p.date, weight: fromBase(p.weight, unit) }))
+    : null;
   chartWrap.appendChild(trendChart({
-    points: windowPoints,
-    goal: state.meta.goal,
-    regression: regression ? regression.points : null,
+    points: displayWindow,
+    goal: displayGoal,
+    regression: displayRegression,
     xBounds: bounds,
+    unitLabel: unitLabel(unit),
+    yStep: axisStep(unit),
   }));
   card.appendChild(chartWrap);
 
@@ -716,6 +776,7 @@ function rangedBounds() {
 function renderHistory(root) {
   const container = document.createElement('div');
   container.className = 'view';
+  const unit = state.meta.unit;
 
   const title = document.createElement('h1');
   title.className = 'view-title';
@@ -756,12 +817,12 @@ function renderHistory(root) {
       tr.appendChild(dateTd);
 
       const weightTd = document.createElement('td');
-      weightTd.textContent = `${fmtWeight(entry.weight)} lbs`;
+      weightTd.textContent = `${formatWeight(entry.weight, unit)} ${unitLabel(unit)}`;
       tr.appendChild(weightTd);
 
       const deltaTd = document.createElement('td');
       deltaTd.className = 'delta ' + (delta == null ? 'delta-none' : signClass(delta));
-      deltaTd.textContent = delta == null ? '—' : `${fmtSignedWeight(delta)} lbs`;
+      deltaTd.textContent = delta == null ? '—' : `${formatSignedWeight(delta, unit)} ${unitLabel(unit)}`;
       tr.appendChild(deltaTd);
 
       const actionTd = document.createElement('td');
@@ -773,7 +834,7 @@ function renderHistory(root) {
       del.addEventListener('click', async () => {
         const ok = await confirmDialog({
           title: 'Delete entry?',
-          message: `This will remove the ${fmtWeight(entry.weight)} lb entry for ${formatShortDate(entry.date)}.`,
+          message: `This will remove the ${formatWeight(entry.weight, unit)} ${unitLabel(unit)} entry for ${formatShortDate(entry.date)}.`,
           confirmLabel: 'Delete',
           destructive: true,
         });
@@ -798,7 +859,7 @@ function renderHistory(root) {
   exportBtn.className = 'btn-ghost';
   exportBtn.textContent = 'Export to CSV';
   exportBtn.addEventListener('click', async () => {
-    const csv = await api.stats.exportCsv();
+    const csv = await api.stats.exportCsv(state.meta.unit);
     downloadCsv(csv);
   });
   footer.appendChild(exportBtn);

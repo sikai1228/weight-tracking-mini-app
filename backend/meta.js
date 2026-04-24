@@ -6,11 +6,20 @@ function createMetaApi(storage) {
   async function get() {
     const state = await storage.load();
     return {
+      unit: state.unit ?? 'lb',
       goal: state.goal,
       startWeight: state.startWeight,
       startDate: state.startDate,
       isConfigured: state.goal != null && state.startWeight != null,
     };
+  }
+
+  async function updateUnit(value) {
+    if (value !== 'lb' && value !== 'kg') throw new Error('unit must be lb or kg');
+    return storage.update((state) => {
+      state.unit = value;
+      return { unit: value };
+    });
   }
 
   async function setup({ startWeight, goal, startDate }) {
@@ -42,7 +51,7 @@ function createMetaApi(storage) {
     });
   }
 
-  return { get, setup, updateStartWeight, updateGoal };
+  return { get, setup, updateStartWeight, updateGoal, updateUnit };
 }
 
 module.exports = { createMetaApi };

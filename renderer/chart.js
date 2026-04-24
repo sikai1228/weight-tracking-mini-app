@@ -1,4 +1,4 @@
-import { parseISO, daysBetween, toISO, addDays, formatShortDate, formatEstDate, fmtWeight, fmtSignedWeight, signClass } from './util.js';
+import { parseISO, daysBetween, toISO, addDays, formatShortDate, formatEstDate, signClass } from './util.js';
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -132,14 +132,14 @@ function formatTick(iso, strategy, crossesYears) {
   return formatShortDate(iso);
 }
 
-function trendYBounds(points, goal) {
+function trendYBounds(points, goal, step) {
   const weights = points.map((p) => p.weight);
   const lowest = Math.min(...weights);
   const highest = Math.max(...weights);
-  const lowBase = Math.floor(lowest / 5) * 5;
-  const yMin = lowBase === lowest ? lowBase - 5 : lowBase;
-  const fromData = Math.ceil((highest + 5) / 5) * 5;
-  const fromGoal = goal != null ? Math.ceil(goal / 5) * 5 : fromData;
+  const lowBase = Math.floor(lowest / step) * step;
+  const yMin = lowBase === lowest ? lowBase - step : lowBase;
+  const fromData = Math.ceil((highest + step) / step) * step;
+  const fromGoal = goal != null ? Math.ceil(goal / step) * step : fromData;
   const yMax = Math.max(fromData, fromGoal);
   return { min: yMin, max: yMax };
 }
@@ -175,7 +175,7 @@ export function sparkline({ points, width = 560, height = 120 }) {
   return svg;
 }
 
-export function trendChart({ points, goal, rolling, regression, xBounds, width = 800, height = 360 }) {
+export function trendChart({ points, goal, rolling, regression, xBounds, unitLabel = 'lbs', yStep = 5, width = 800, height = 360 }) {
   const wrap = document.createElement('div');
   wrap.className = 'trend-chart-wrap';
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
@@ -194,10 +194,10 @@ export function trendChart({ points, goal, rolling, regression, xBounds, width =
   const allForBounds = [...points];
   if (rolling) allForBounds.push(...rolling);
   if (regression) allForBounds.push(...regression);
-  const yBounds = trendYBounds(allForBounds, goal);
+  const yBounds = trendYBounds(allForBounds, goal, yStep);
   const { x, y, min, max } = computeScales(points, width, height, padding, goal, yBounds, xBounds);
 
-  for (let v = min; v <= max + 0.001; v += 5) {
+  for (let v = min; v <= max + 0.001; v += yStep) {
     const yy = y(v);
     svg.appendChild(el('line', {
       x1: padding.left, x2: width - padding.right,
@@ -316,10 +316,15 @@ export function trendChart({ points, goal, rolling, regression, xBounds, width =
     const weight = parseFloat(dot.getAttribute('data-weight'));
     const prevAttr = dot.getAttribute('data-prev-weight');
     const change = prevAttr ? weight - parseFloat(prevAttr) : null;
+    const fmt = (v) => Number(v).toFixed(1);
+    const fmtSigned = (v) => {
+      const sign = v > 0 ? '+' : v < 0 ? '−' : '';
+      return sign + Math.abs(v).toFixed(1);
+    };
     tooltip.innerHTML = `
       <div class="tt-date">${formatEstDate(iso)}</div>
-      <div class="tt-weight">${fmtWeight(weight)} lbs</div>
-      <div class="tt-change ${signClass(change)}">${change == null ? '' : fmtSignedWeight(change) + ' lbs'}</div>
+      <div class="tt-weight">${fmt(weight)} ${unitLabel}</div>
+      <div class="tt-change ${signClass(change)}">${change == null ? '' : fmtSigned(change) + ' ' + unitLabel}</div>
     `;
     const dotRect = dot.getBoundingClientRect();
     const wrapRect = wrap.getBoundingClientRect();

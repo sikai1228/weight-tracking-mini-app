@@ -15,9 +15,10 @@ contextBridge.exposeInMainWorld('api', {
     setup: (payload) => invoke('meta:setup', payload),
     setStartWeight: (value) => invoke('meta:setStartWeight', value),
     setGoal: (value) => invoke('meta:setGoal', value),
+    setUnit: (value) => invoke('meta:setUnit', value),
   },
   stats: {
     all: () => invoke('stats:all'),
-    exportCsv: () => invoke('stats:exportCsv'),
+    exportCsv: (unit) => invoke('stats:exportCsv', unit),
   },
 });

@@ -11,9 +11,10 @@ const CHANNELS = {
   'meta:setup': (api) => (_e, payload) => api.meta.setup(payload),
   'meta:setStartWeight': (api) => (_e, value) => api.meta.updateStartWeight(value),
   'meta:setGoal': (api) => (_e, value) => api.meta.updateGoal(value),
+  'meta:setUnit': (api) => (_e, value) => api.meta.updateUnit(value),
 
   'stats:all': (api) => () => api.stats.all(),
-  'stats:exportCsv': (api) => () => api.stats.exportCsv(),
+  'stats:exportCsv': (api) => (_e, unit) => api.stats.exportCsv(unit),
 };
 
 function registerIpc(api) {
