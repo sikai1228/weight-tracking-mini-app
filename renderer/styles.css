@@ -347,18 +347,29 @@ nav {
 .stat-edit-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
 
 .stat-value {
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
   display: flex;
   align-items: baseline;
   gap: 6px;
 }
 
-.stat-value .unit {
+.stat-primary {
+  font-family: var(--font);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-unit {
+  font-family: var(--font);
   font-size: 13px;
   font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.2;
   color: var(--text-2);
+  font-variant-numeric: normal;
 }
 
 

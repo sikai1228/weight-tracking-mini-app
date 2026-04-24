@@ -351,6 +351,7 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
   valueEl.className = 'stat-value';
 
   const numEl = document.createElement('span');
+  numEl.className = 'stat-primary';
   if (kind === 'date') {
     numEl.textContent = value == null ? '—' : formatEstDate(value);
   } else {
@@ -360,7 +361,7 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
 
   if (kind !== 'date') {
     const unit = document.createElement('span');
-    unit.className = 'unit';
+    unit.className = 'stat-unit';
     unit.textContent = 'lbs';
     valueEl.appendChild(unit);
   }
@@ -513,7 +514,7 @@ function buildRangeDropdown({ options, value, onChange }) {
   const openMenu = () => {
     if (open) return;
     open = true;
-    menu.style.display = 'block';
+    menu.style.display = 'flex';
     wrap.classList.add('open');
     document.addEventListener('mousedown', onOutside, true);
     document.addEventListener('keydown', onKey);
