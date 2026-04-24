@@ -101,14 +101,14 @@ function validateGoal(newGoal, mode, currentWeight, unit) {
     return {
       valid: false,
       title: 'Invalid goal',
-      message: `In bulk mode, your goal must be higher than your current weight (${curStr}).`,
+      message: `In bulk mode, your goal must be higher than your current weight (${curStr}). If you want to lose weight, please switch to cut mode in settings.`,
     };
   }
   if (mode === 'cut' && newGoal >= currentWeight) {
     return {
       valid: false,
       title: 'Invalid goal',
-      message: `In cut mode, your goal must be lower than your current weight (${curStr}).`,
+      message: `In cut mode, your goal must be lower than your current weight (${curStr}). If you want to gain weight, please switch to bulk mode in settings.`,
     };
   }
   return { valid: true };
