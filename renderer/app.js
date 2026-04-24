@@ -12,7 +12,7 @@ const state = {
   view: 'today',
   meta: null,
   entries: [],
-  sparklineDays: 30,
+  sparklineRange: '1M',
   trendsRange: '1M',
 };
 
@@ -422,32 +422,39 @@ function buildSparklineCard() {
   card.className = 'card sparkline-card';
 
   const today = todayISO();
-  const startIso = addDays(today, -(state.sparklineDays - 1));
-  const points = entriesInRange(state.entries, startIso, today);
+  const days = RANGE_DAYS[state.sparklineRange];
+  let points;
+  if (days == null) {
+    points = [...state.entries].sort((a, b) => a.date.localeCompare(b.date));
+  } else {
+    const startIso = addDays(today, -(days - 1));
+    points = entriesInRange(state.entries, startIso, today);
+  }
   const delta = points.length >= 2
     ? points[points.length - 1].weight - points[0].weight
     : null;
 
   const header = document.createElement('div');
   header.className = 'sparkline-header';
-  header.innerHTML = `
-    <div class="sparkline-title">
-      <span>Last</span>
-      <select class="range-select" id="spark-range">
-        ${[30, 60, 90, 180].map((n) =>
-          `<option value="${n}" ${n === state.sparklineDays ? 'selected' : ''}>${n}</option>`
-        ).join('')}
-      </select>
-      <span>days</span>
-    </div>
-    <div class="sparkline-delta ${signClass(delta)}">${delta == null ? '—' : fmtSignedWeight(delta) + ' lbs'}</div>
-  `;
-  card.appendChild(header);
 
-  header.querySelector('#spark-range').addEventListener('change', (e) => {
-    state.sparklineDays = Number(e.target.value);
-    render();
-  });
+  const title = document.createElement('div');
+  title.className = 'sparkline-title';
+  title.appendChild(buildRangeDropdown({
+    options: Object.keys(RANGE_DAYS),
+    value: state.sparklineRange,
+    onChange: (v) => {
+      state.sparklineRange = v;
+      render();
+    },
+  }));
+  header.appendChild(title);
+
+  const deltaEl = document.createElement('div');
+  deltaEl.className = `sparkline-delta ${signClass(delta)}`;
+  deltaEl.textContent = delta == null ? '—' : fmtSignedWeight(delta) + ' lbs';
+  header.appendChild(deltaEl);
+
+  card.appendChild(header);
 
   const chartWrap = document.createElement('div');
   chartWrap.style.height = '120px';
@@ -455,6 +462,70 @@ function buildSparklineCard() {
   card.appendChild(chartWrap);
 
   return card;
+}
+
+function buildRangeDropdown({ options, value, onChange }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'range-dropdown';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'range-trigger';
+  trigger.innerHTML = `<span class="range-value">${value}</span><span class="range-caret">${caretDownIcon()}</span>`;
+  wrap.appendChild(trigger);
+
+  const menu = document.createElement('div');
+  menu.className = 'range-menu';
+  menu.style.display = 'none';
+  wrap.appendChild(menu);
+
+  options.forEach((opt) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'range-item' + (opt === value ? ' active' : '');
+    item.textContent = opt;
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      close();
+      if (opt !== value) onChange(opt);
+    });
+    menu.appendChild(item);
+  });
+
+  let open = false;
+  const onOutside = (e) => {
+    if (!wrap.contains(e.target)) close();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  const close = () => {
+    if (!open) return;
+    open = false;
+    menu.style.display = 'none';
+    wrap.classList.remove('open');
+    document.removeEventListener('mousedown', onOutside, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  const openMenu = () => {
+    if (open) return;
+    open = true;
+    menu.style.display = 'block';
+    wrap.classList.add('open');
+    document.addEventListener('mousedown', onOutside, true);
+    document.addEventListener('keydown', onKey);
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    open ? close() : openMenu();
+  });
+
+  return wrap;
+}
+
+function caretDownIcon() {
+  return `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.8l3 3 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 /* ---------- Trends ---------- */
