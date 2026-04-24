@@ -307,11 +307,13 @@ function alertDialog({ title, message, confirmLabel = 'OK' }) {
       if (e.key === 'Escape' || e.key === 'Enter') close();
     };
     btn.addEventListener('click', close);
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) close();
-    });
     dialog.addEventListener('click', (e) => e.stopPropagation());
     document.addEventListener('keydown', onKey);
+    setTimeout(() => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) close();
+      });
+    }, 0);
     btn.focus();
   });
 }
