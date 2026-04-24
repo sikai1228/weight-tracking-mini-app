@@ -50,8 +50,27 @@ function createWindow() {
 
 function createTray() {
   if (tray) return tray;
-  tray = new Tray(nativeImage.createEmpty());
-  if (process.platform === 'darwin') tray.setTitle('WT');
+
+  const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');
+  let image = null;
+  if (fs.existsSync(iconPath)) {
+    try {
+      image = nativeImage.createFromPath(iconPath);
+      if (image.isEmpty()) image = null;
+    } catch (err) {
+      console.error('[tray] failed to load icon:', err);
+      image = null;
+    }
+  }
+
+  if (image && process.platform === 'darwin') {
+    image.setTemplateImage(true);
+  }
+
+  tray = new Tray(image || nativeImage.createEmpty());
+  if (!image && process.platform === 'darwin') {
+    tray.setTitle('WT');
+  }
   tray.setToolTip('Weight Tracker');
   const menu = Menu.buildFromTemplate([
     {

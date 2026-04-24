@@ -30,6 +30,10 @@ const views = {
 };
 
 async function boot() {
+  const logoImg = document.getElementById('brand-logo');
+  if (logoImg) {
+    logoImg.addEventListener('error', () => logoImg.classList.add('missing'));
+  }
   await refresh();
   if (typeof api.onDataUpdated === 'function') {
     api.onDataUpdated(async () => {
