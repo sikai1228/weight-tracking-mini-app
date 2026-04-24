@@ -349,27 +349,27 @@ nav {
   color: var(--text-3);
 }
 
-.stat-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 6px;
-  color: var(--text-3);
-}
-
-.stat-edit-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
-
+.stat-edit-btn,
 .stat-info-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 4px;
-  border-radius: 6px;
   color: var(--text-3);
   cursor: pointer;
+  background: transparent;
 }
-.stat-info-btn:hover { color: var(--text-2); background: rgba(0,0,0,0.04); }
+
+.stat-edit-btn:hover { color: var(--text); }
+.stat-info-btn:hover { color: var(--text-2); }
+
+.stat-edit-btn:focus,
+.stat-edit-btn:focus-visible,
+.stat-info-btn:focus,
+.stat-info-btn:focus-visible {
+  outline: none;
+  background: transparent;
+}
 
 .projection-popover {
   background: #ffffff;
