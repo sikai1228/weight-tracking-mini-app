@@ -263,13 +263,17 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
   tooltip.style.display = 'none';
   wrap.appendChild(tooltip);
 
-  svg.addEventListener('click', (e) => {
-    const dot = e.target.closest ? e.target.closest('.chart-dot-hit') : null;
-    if (!dot) {
-      tooltip.style.display = 'none';
-      return;
-    }
+  let activeIso = null;
+
+  function hide() {
+    tooltip.style.display = 'none';
+    activeIso = null;
+  }
+
+  function showFor(dot) {
     const iso = dot.getAttribute('data-iso');
+    if (activeIso === iso) { hide(); return; }
+    activeIso = iso;
     const weight = parseFloat(dot.getAttribute('data-weight'));
     const prevAttr = dot.getAttribute('data-prev-weight');
     const change = prevAttr ? weight - parseFloat(prevAttr) : null;
@@ -283,7 +287,32 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
     tooltip.style.left = `${dotRect.left - wrapRect.left + dotRect.width / 2}px`;
     tooltip.style.top = `${dotRect.top - wrapRect.top}px`;
     tooltip.style.display = 'block';
+  }
+
+  svg.addEventListener('click', (e) => {
+    const dot = e.target.closest ? e.target.closest('.chart-dot-hit') : null;
+    if (dot) showFor(dot);
+    else hide();
   });
+
+  const onDocClick = (e) => {
+    if (!wrap.isConnected) {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+      return;
+    }
+    if (!svg.contains(e.target)) hide();
+  };
+  const onKey = (e) => {
+    if (!wrap.isConnected) {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+      return;
+    }
+    if (e.key === 'Escape') hide();
+  };
+  document.addEventListener('click', onDocClick);
+  document.addEventListener('keydown', onKey);
 
   return wrap;
 }
