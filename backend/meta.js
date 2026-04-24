@@ -47,6 +47,24 @@ function createMetaApi(storage) {
     });
   }
 
+  async function setRemindersEnabled(value) {
+    const enabled = value === true;
+    return storage.update((state) => {
+      state.remindersEnabled = enabled;
+      return { remindersEnabled: enabled };
+    });
+  }
+
+  async function setReminderTime(value) {
+    if (typeof value !== 'string' || !/^\d{1,2}:\d{2}$/.test(value)) {
+      throw new Error('reminderTime must be HH:MM');
+    }
+    return storage.update((state) => {
+      state.reminderTime = value;
+      return { reminderTime: value };
+    });
+  }
+
   async function setup({ startWeight, goal, startDate }) {
     assertPositiveNumber(startWeight, 'startWeight');
     assertPositiveNumber(goal, 'goal');
@@ -79,7 +97,7 @@ function createMetaApi(storage) {
   return {
     get, setup,
     updateStartWeight, updateGoal, updateUnit, updateMode,
-    getReminder, setLastReminderDate,
+    getReminder, setLastReminderDate, setRemindersEnabled, setReminderTime,
   };
 }
 

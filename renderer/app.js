@@ -25,6 +25,7 @@ const views = {
   today: renderToday,
   trends: renderTrends,
   history: renderHistory,
+  settings: renderSettings,
 };
 
 async function boot() {
@@ -32,77 +33,16 @@ async function boot() {
   if (typeof api.onDataUpdated === 'function') {
     api.onDataUpdated(async () => {
       await refresh();
-      updateUnitToggle();
-      updateModeToggle();
       render();
     });
   }
   document.querySelectorAll('.nav-item').forEach((btn) => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
-  const bottomMount = document.getElementById('sidebar-bottom');
-  if (bottomMount) {
-    bottomMount.appendChild(buildModeToggle());
-    bottomMount.appendChild(buildUnitToggle());
-    updateModeToggle();
-    updateUnitToggle();
-  }
   if (!state.meta.isConfigured) {
     showSetupModal();
   }
   render();
-}
-
-function buildUnitToggle() {
-  const wrap = document.createElement('div');
-  wrap.className = 'seg-toggle unit-toggle';
-  wrap.setAttribute('role', 'group');
-  wrap.setAttribute('aria-label', 'Unit');
-  for (const key of ['lb', 'kg']) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'seg-btn';
-    btn.dataset.unit = key;
-    btn.textContent = key;
-    btn.addEventListener('click', async () => {
-      if (state.meta.unit === key) return;
-      await api.meta.setUnit(key);
-      await refresh();
-      updateUnitToggle();
-      render();
-    });
-    wrap.appendChild(btn);
-  }
-  return wrap;
-}
-
-function updateUnitToggle() {
-  document.querySelectorAll('.unit-toggle .seg-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.unit === state.meta.unit);
-  });
-}
-
-function buildModeToggle() {
-  const wrap = document.createElement('div');
-  wrap.className = 'seg-toggle mode-toggle';
-  wrap.setAttribute('role', 'group');
-  wrap.setAttribute('aria-label', 'Mode');
-  for (const key of ['bulk', 'cut']) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'seg-btn';
-    btn.dataset.mode = key;
-    btn.textContent = key;
-    btn.addEventListener('click', () => attemptModeSwitch(key));
-    wrap.appendChild(btn);
-  }
-  return wrap;
-}
-
-function updateModeToggle() {
-  document.querySelectorAll('.mode-toggle .seg-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.mode === state.meta.mode);
-  });
 }
 
 async function attemptModeSwitch(newMode) {
@@ -114,7 +54,6 @@ async function attemptModeSwitch(newMode) {
   if (!needsGoalUpdate) {
     await api.meta.setMode(newMode);
     await refresh();
-    updateModeToggle();
     render();
     return;
   }
@@ -126,17 +65,16 @@ async function attemptModeSwitch(newMode) {
     unit: state.meta.unit,
   });
   if (newGoal == null) {
-    updateModeToggle();
+    render();
     return;
   }
   if (!isGoalValidForMode(newGoal, current, newMode)) {
-    updateModeToggle();
+    render();
     return;
   }
   await api.meta.setGoal(newGoal);
   await api.meta.setMode(newMode);
   await refresh();
-  updateModeToggle();
   render();
 }
 
@@ -1161,6 +1099,193 @@ function trashIcon() {
   return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <path d="M2.5 4.5h11M6 4.5V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M4 4.5l.7 8.6A1 1 0 0 0 5.7 14h4.6a1 1 0 0 0 1-.9l.7-8.6M7 7v4M9 7v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
+}
+
+/* ---------- Settings ---------- */
+
+function settingRow({ label, description, control }) {
+  const row = document.createElement('div');
+  row.className = 'setting-row';
+
+  const text = document.createElement('div');
+  text.className = 'setting-row-text';
+  const labelEl = document.createElement('p');
+  labelEl.className = 'setting-row-label';
+  labelEl.textContent = label;
+  text.appendChild(labelEl);
+  if (description) {
+    const desc = document.createElement('p');
+    desc.className = 'setting-row-description';
+    desc.textContent = description;
+    text.appendChild(desc);
+  }
+
+  const controlWrap = document.createElement('div');
+  controlWrap.className = 'setting-row-control';
+  controlWrap.appendChild(control);
+
+  row.appendChild(text);
+  row.appendChild(controlWrap);
+  return row;
+}
+
+function settingsSection({ title, rows }) {
+  const section = document.createElement('section');
+  section.className = 'settings-section';
+
+  const heading = document.createElement('h2');
+  heading.className = 'settings-section-title';
+  heading.textContent = title;
+  section.appendChild(heading);
+
+  const content = document.createElement('div');
+  content.className = 'settings-section-content';
+  rows.forEach((r) => content.appendChild(r));
+  section.appendChild(content);
+
+  return section;
+}
+
+function segmentedControl({ options, value, onChange, ariaLabel }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'seg-toggle';
+  if (ariaLabel) {
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', ariaLabel);
+  }
+  options.forEach((opt) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'seg-btn' + (opt === value ? ' active' : '');
+    btn.textContent = opt;
+    btn.addEventListener('click', () => {
+      if (opt === value) return;
+      onChange(opt);
+    });
+    wrap.appendChild(btn);
+  });
+  return wrap;
+}
+
+function toggleControl({ value, onChange, disabled = false, ariaLabel }) {
+  const label = document.createElement('label');
+  label.className = 'switch' + (disabled ? ' disabled' : '');
+  if (ariaLabel) label.setAttribute('aria-label', ariaLabel);
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = !!value;
+  input.disabled = !!disabled;
+  const track = document.createElement('span');
+  track.className = 'switch-track';
+  const thumb = document.createElement('span');
+  thumb.className = 'switch-thumb';
+  track.appendChild(thumb);
+  label.appendChild(input);
+  label.appendChild(track);
+  input.addEventListener('change', () => onChange(input.checked));
+  return label;
+}
+
+function timePicker({ value, onChange, disabled = false }) {
+  const input = document.createElement('input');
+  input.type = 'time';
+  input.step = '60';
+  input.value = value || '08:00';
+  input.className = 'settings-time-input';
+  if (disabled) input.disabled = true;
+  input.addEventListener('change', () => {
+    if (!input.value) return;
+    onChange(input.value);
+  });
+  return input;
+}
+
+async function renderSettings(root) {
+  const container = document.createElement('div');
+  container.className = 'view settings-view';
+
+  const title = document.createElement('h1');
+  title.className = 'settings-page-title';
+  title.textContent = 'Settings';
+  container.appendChild(title);
+
+  const modeControl = segmentedControl({
+    options: ['bulk', 'cut'],
+    value: state.meta.mode,
+    ariaLabel: 'Mode',
+    onChange: (newMode) => { attemptModeSwitch(newMode); },
+  });
+
+  const unitControl = segmentedControl({
+    options: ['lb', 'kg'],
+    value: state.meta.unit,
+    ariaLabel: 'Unit',
+    onChange: async (newUnit) => {
+      if (state.meta.unit === newUnit) return;
+      await api.meta.setUnit(newUnit);
+      await refresh();
+      render();
+    },
+  });
+
+  container.appendChild(settingsSection({
+    title: 'Goal',
+    rows: [
+      settingRow({
+        label: 'Mode',
+        description: 'Bulk for gaining weight, cut for losing.',
+        control: modeControl,
+      }),
+      settingRow({
+        label: 'Unit',
+        description: 'Display weights in pounds or kilograms.',
+        control: unitControl,
+      }),
+    ],
+  }));
+
+  const reminder = await api.meta.getReminder();
+  const remindersEnabled = reminder.remindersEnabled !== false;
+  const reminderTime = reminder.reminderTime || '08:00';
+
+  const enabledToggle = toggleControl({
+    value: remindersEnabled,
+    ariaLabel: 'Daily reminder',
+    onChange: async (val) => {
+      await api.meta.setRemindersEnabled(val);
+      render();
+    },
+  });
+
+  const timeInput = timePicker({
+    value: reminderTime,
+    disabled: !remindersEnabled,
+    onChange: async (val) => {
+      try {
+        await api.meta.setReminderTime(val);
+      } catch (err) {
+        console.error(err);
+      }
+    },
+  });
+
+  container.appendChild(settingsSection({
+    title: 'Reminders',
+    rows: [
+      settingRow({
+        label: 'Daily reminder',
+        description: 'Show a popup each morning to log your weight.',
+        control: enabledToggle,
+      }),
+      settingRow({
+        label: 'Reminder time',
+        description: 'When the daily popup appears.',
+        control: timeInput,
+      }),
+    ],
+  }));
+
+  root.appendChild(container);
 }
 
 /* ---------- Boot ---------- */

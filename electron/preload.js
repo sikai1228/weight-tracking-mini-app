@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld('api', {
     setGoal: (value) => invoke('meta:setGoal', value),
     setUnit: (value) => invoke('meta:setUnit', value),
     setMode: (value) => invoke('meta:setMode', value),
+    getReminder: () => invoke('meta:getReminder'),
+    setRemindersEnabled: (value) => invoke('meta:setRemindersEnabled', value),
+    setReminderTime: (value) => invoke('meta:setReminderTime', value),
   },
   stats: {
     all: () => invoke('stats:all'),

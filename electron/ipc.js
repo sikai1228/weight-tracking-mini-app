@@ -13,6 +13,9 @@ const CHANNELS = {
   'meta:setGoal': (api) => (_e, value) => api.meta.updateGoal(value),
   'meta:setUnit': (api) => (_e, value) => api.meta.updateUnit(value),
   'meta:setMode': (api) => (_e, value) => api.meta.updateMode(value),
+  'meta:getReminder': (api) => () => api.meta.getReminder(),
+  'meta:setRemindersEnabled': (api) => (_e, value) => api.meta.setRemindersEnabled(value),
+  'meta:setReminderTime': (api) => (_e, value) => api.meta.setReminderTime(value),
 
   'stats:all': (api) => () => api.stats.all(),
   'stats:exportCsv': (api) => (_e, unit) => api.stats.exportCsv(unit),
