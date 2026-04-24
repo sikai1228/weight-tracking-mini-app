@@ -97,19 +97,18 @@ function validateGoal(newGoal, mode, currentWeight, unit) {
   if (currentWeight == null) return { valid: true };
   const label = unitLabel(unit);
   const curStr = `${formatWeight(currentWeight, unit)} ${label}`;
-  const newStr = `${formatWeight(newGoal, unit)} ${label}`;
   if (mode === 'bulk' && newGoal <= currentWeight) {
     return {
       valid: false,
       title: 'Invalid goal',
-      message: `In bulk mode, your goal must be higher than your current weight (${curStr}). You tried to set ${newStr}.`,
+      message: `In bulk mode, your goal must be higher than your current weight (${curStr}).`,
     };
   }
   if (mode === 'cut' && newGoal >= currentWeight) {
     return {
       valid: false,
       title: 'Invalid goal',
-      message: `In cut mode, your goal must be lower than your current weight (${curStr}). You tried to set ${newStr}.`,
+      message: `In cut mode, your goal must be lower than your current weight (${curStr}).`,
     };
   }
   return { valid: true };
@@ -122,19 +121,18 @@ function validateStartWeight(newStart, mode, goal, unit) {
   if (goal == null) return { valid: true };
   const label = unitLabel(unit);
   const goalStr = `${formatWeight(goal, unit)} ${label}`;
-  const newStr = `${formatWeight(newStart, unit)} ${label}`;
   if (mode === 'bulk' && newStart >= goal) {
     return {
       valid: false,
       title: 'Invalid start weight',
-      message: `In bulk mode, your start weight must be lower than your goal (${goalStr}). You tried to set ${newStr}.`,
+      message: `In bulk mode, your start weight must be lower than your goal (${goalStr}).`,
     };
   }
   if (mode === 'cut' && newStart <= goal) {
     return {
       valid: false,
       title: 'Invalid start weight',
-      message: `In cut mode, your start weight must be higher than your goal (${goalStr}). You tried to set ${newStr}.`,
+      message: `In cut mode, your start weight must be higher than your goal (${goalStr}).`,
     };
   }
   return { valid: true };
