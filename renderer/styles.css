@@ -11,6 +11,8 @@
   --accent-soft: rgba(99, 153, 34, 0.12);
   --track: #e5e5ea;
   --danger: #c04a3a;
+  --gain: #639922;
+  --loss: #ff3b30;
   --radius: 14px;
   --radius-sm: 10px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "Inter",
@@ -198,11 +200,14 @@ nav {
   margin-top: 10px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent);
 }
 
-.hero-delta.neutral { color: var(--text-2); }
-.hero-delta.off { color: var(--text-2); }
+.hero-delta.delta-none { color: var(--text-2); }
+
+.delta-pos { color: var(--gain); }
+.delta-neg { color: var(--loss); }
+.delta-zero { color: var(--text); }
+.delta-none { color: var(--text-2); }
 
 .hero-empty {
   font-size: 15px;
@@ -305,14 +310,31 @@ nav {
   padding: 18px 20px;
 }
 
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .stat-label {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-3);
-  margin-bottom: 8px;
 }
+
+.stat-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text-3);
+}
+
+.stat-edit-btn:hover { color: var(--text); background: rgba(0,0,0,0.04); }
 
 .stat-value {
   font-size: 26px;
@@ -328,14 +350,6 @@ nav {
   font-weight: 400;
   color: var(--text-2);
 }
-
-.stat-editable {
-  cursor: text;
-  padding: 2px 0;
-  border-radius: 6px;
-}
-
-.stat-editable:hover { background: rgba(0,0,0,0.035); }
 
 .stat-edit-input {
   font: inherit;
@@ -385,10 +399,7 @@ nav {
 .sparkline-delta {
   font-size: 13px;
   font-weight: 500;
-  color: var(--accent);
 }
-.sparkline-delta.off { color: var(--text-2); }
-.sparkline-delta.neutral { color: var(--text-2); }
 
 .chart-empty {
   display: flex;
@@ -432,6 +443,11 @@ nav {
   border: 0.5px solid var(--border);
 }
 
+.trend-delta {
+  font-size: 13px;
+  font-weight: 500;
+}
+
 /* History */
 .history-table {
   width: 100%;
@@ -457,9 +473,7 @@ nav {
 
 .history-table tbody tr:last-child td { border-bottom: none; }
 
-.history-table .delta.up { color: var(--text); }
-.history-table .delta.down { color: var(--text); }
-.history-table .delta.flat { color: var(--text-3); }
+.history-table .delta { font-weight: 500; }
 
 .history-footer {
   display: flex;

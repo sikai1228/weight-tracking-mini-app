@@ -1,5 +1,7 @@
 import { parseISO, daysBetween, toISO, addDays, formatShortDate } from './util.js';
 
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 const NS = 'http://www.w3.org/2000/svg';
 
 function el(tag, attrs = {}) {
@@ -42,20 +44,32 @@ export function progressRing({ percent, size = 96, stroke = 6 }) {
   return svg;
 }
 
-function computeScales(points, width, height, padding, goal) {
-  const values = points.map((p) => p.weight);
-  if (goal != null) values.push(goal);
-  let min = Math.min(...values);
-  let max = Math.max(...values);
-  if (!Number.isFinite(min) || !Number.isFinite(max)) { min = 0; max = 1; }
-  const range = max - min || 1;
-  const pad = range * 0.1;
-  min -= pad;
-  max += pad;
+function computeScales(points, width, height, padding, goal, yBounds, xBounds) {
+  let min, max;
+  if (yBounds) {
+    min = yBounds.min;
+    max = yBounds.max;
+  } else {
+    const values = points.map((p) => p.weight);
+    if (goal != null) values.push(goal);
+    min = Math.min(...values);
+    max = Math.max(...values);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) { min = 0; max = 1; }
+    const range = max - min || 1;
+    const pad = range * 0.1;
+    min -= pad;
+    max += pad;
+  }
 
-  const dates = points.map((p) => parseISO(p.date).getTime());
-  const tMin = Math.min(...dates);
-  const tMax = Math.max(...dates);
+  let tMin, tMax;
+  if (xBounds) {
+    tMin = parseISO(xBounds.start).getTime();
+    tMax = parseISO(xBounds.end).getTime();
+  } else {
+    const dates = points.map((p) => parseISO(p.date).getTime());
+    tMin = Math.min(...dates);
+    tMax = Math.max(...dates);
+  }
   const tRange = tMax - tMin || 1;
 
   const x = (iso) => {
@@ -65,6 +79,69 @@ function computeScales(points, width, height, padding, goal) {
   const y = (w) =>
     padding.top + (1 - (w - min) / (max - min)) * (height - padding.top - padding.bottom);
   return { x, y, min, max };
+}
+
+function chooseTickStrategy(spanDays) {
+  if (spanDays <= 14) return 'daily';
+  if (spanDays <= 100) return 'weekly';
+  return 'monthly';
+}
+
+function generateTicks(startIso, endIso, strategy) {
+  const ticks = [];
+  if (strategy === 'daily') {
+    let iso = startIso;
+    while (iso <= endIso) {
+      ticks.push(iso);
+      iso = addDays(iso, 1);
+    }
+    return ticks;
+  }
+  if (strategy === 'weekly') {
+    const d = parseISO(startIso);
+    const dayOfWeek = d.getDay();
+    const offset = (1 - dayOfWeek + 7) % 7;
+    d.setDate(d.getDate() + offset);
+    let iso = toISO(d);
+    if (iso > endIso) return [startIso, endIso];
+    while (iso <= endIso) {
+      ticks.push(iso);
+      iso = addDays(iso, 7);
+    }
+    return ticks;
+  }
+  const d = parseISO(startIso);
+  let cursor = new Date(d.getFullYear(), d.getMonth(), 1);
+  if (cursor < d) cursor = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  let iso = toISO(cursor);
+  while (iso <= endIso) {
+    ticks.push(iso);
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    iso = toISO(cursor);
+  }
+  if (ticks.length < 2) return [startIso, endIso];
+  return ticks;
+}
+
+function formatTick(iso, strategy, crossesYears) {
+  const d = parseISO(iso);
+  if (strategy === 'monthly') {
+    const label = MONTH_SHORT[d.getMonth()];
+    return crossesYears && d.getMonth() === 0 ? `${label} '${String(d.getFullYear()).slice(2)}` : label;
+  }
+  return formatShortDate(iso);
+}
+
+function trendYBounds(points, goal) {
+  const weights = points.map((p) => p.weight);
+  const lowest = Math.min(...weights);
+  const highest = Math.max(...weights);
+  const lowBase = Math.floor(lowest / 5) * 5;
+  const yMin = lowBase === lowest ? lowBase - 5 : lowBase;
+  const fromData = Math.ceil((highest + 5) / 5) * 5;
+  const fromGoal = goal != null ? Math.ceil(goal / 5) * 5 : fromData;
+  const yMax = Math.max(fromData, fromGoal);
+  return { min: yMin, max: yMax };
 }
 
 export function sparkline({ points, goal, width = 560, height = 120 }) {
@@ -95,7 +172,7 @@ export function sparkline({ points, goal, width = 560, height = 120 }) {
   return svg;
 }
 
-export function trendChart({ points, goal, rolling, width = 800, height = 360 }) {
+export function trendChart({ points, goal, rolling, xBounds, width = 800, height = 360 }) {
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
   if (!points.length) {
     const text = el('text', {
@@ -108,13 +185,10 @@ export function trendChart({ points, goal, rolling, width = 800, height = 360 })
     return svg;
   }
   const padding = { top: 16, right: 16, bottom: 28, left: 40 };
-  const allPoints = [...points];
-  if (rolling) allPoints.push(...rolling);
-  const { x, y, min, max } = computeScales(allPoints, width, height, padding, goal);
+  const yBounds = trendYBounds(points, goal);
+  const { x, y, min, max } = computeScales(points, width, height, padding, goal, yBounds, xBounds);
 
-  const gridCount = 4;
-  for (let i = 0; i <= gridCount; i++) {
-    const v = min + ((max - min) * i) / gridCount;
+  for (let v = min; v <= max + 0.001; v += 5) {
     const yy = y(v);
     svg.appendChild(el('line', {
       x1: padding.left, x2: width - padding.right,
@@ -126,22 +200,23 @@ export function trendChart({ points, goal, rolling, width = 800, height = 360 })
       'text-anchor': 'end',
       class: 'axis-label',
     });
-    label.textContent = v.toFixed(1);
+    label.textContent = String(Math.round(v));
     svg.appendChild(label);
   }
 
-  const firstDate = points[0].date;
-  const lastDate = points[points.length - 1].date;
-  const totalDays = daysBetween(firstDate, lastDate) || 1;
-  const stepDays = Math.max(1, Math.round(totalDays / 5));
-  for (let i = 0; i <= 5; i++) {
-    const d = addDays(firstDate, Math.min(totalDays, i * stepDays));
+  const firstDate = xBounds ? xBounds.start : points[0].date;
+  const lastDate = xBounds ? xBounds.end : points[points.length - 1].date;
+  const spanDays = Math.max(1, daysBetween(firstDate, lastDate));
+  const strategy = chooseTickStrategy(spanDays);
+  const ticks = generateTicks(firstDate, lastDate, strategy);
+  const crossesYears = parseISO(firstDate).getFullYear() !== parseISO(lastDate).getFullYear();
+  for (const iso of ticks) {
     const label = el('text', {
-      x: x(d), y: height - padding.bottom + 16,
+      x: x(iso), y: height - padding.bottom + 16,
       'text-anchor': 'middle',
       class: 'axis-label',
     });
-    label.textContent = formatShortDate(d);
+    label.textContent = formatTick(iso, strategy, crossesYears);
     svg.appendChild(label);
   }
 

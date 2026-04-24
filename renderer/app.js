@@ -1,7 +1,7 @@
 import {
   todayISO, toISO, parseISO, addDays, daysBetween,
   formatFullDate, formatShortDate, fmtWeight, fmtSignedWeight,
-  avg, rollingAverageWindow, progressPct, movingTowardGoal, entriesInRange,
+  avg, rollingAverageWindow, progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 
@@ -145,12 +145,10 @@ function buildHeroCard() {
     const delta = document.createElement('div');
     delta.className = 'hero-delta';
     if (weeklyDelta == null) {
-      delta.classList.add('neutral');
+      delta.classList.add('delta-none');
       delta.textContent = 'Not enough data yet';
     } else {
-      const towardGoal = movingTowardGoal(weeklyDelta, state.meta.startWeight, state.meta.goal);
-      if (towardGoal === false) delta.classList.add('off');
-      if (weeklyDelta === 0) delta.classList.add('neutral');
+      delta.classList.add(signClass(weeklyDelta));
       delta.textContent = `${fmtSignedWeight(weeklyDelta)} lbs this week`;
     }
     left.appendChild(delta);
@@ -275,17 +273,30 @@ function buildStatCard({ label, value, editable, onSave }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
+  const header = document.createElement('div');
+  header.className = 'stat-card-header';
+
   const labelEl = document.createElement('div');
   labelEl.className = 'stat-label';
   labelEl.textContent = label;
-  card.appendChild(labelEl);
+  header.appendChild(labelEl);
+
+  let editBtn = null;
+  if (editable) {
+    editBtn = document.createElement('button');
+    editBtn.className = 'stat-edit-btn';
+    editBtn.setAttribute('aria-label', `Edit ${label.toLowerCase()}`);
+    editBtn.innerHTML = editIcon();
+    header.appendChild(editBtn);
+  }
+
+  card.appendChild(header);
 
   const valueEl = document.createElement('div');
   valueEl.className = 'stat-value';
 
   const numEl = document.createElement('span');
   numEl.textContent = value == null ? '—' : fmtWeight(value);
-  if (editable) numEl.classList.add('stat-editable');
   valueEl.appendChild(numEl);
 
   const unit = document.createElement('span');
@@ -296,7 +307,7 @@ function buildStatCard({ label, value, editable, onSave }) {
   card.appendChild(valueEl);
 
   if (editable) {
-    numEl.addEventListener('click', () => {
+    editBtn.addEventListener('click', () => {
       const input = document.createElement('input');
       input.type = 'number';
       input.step = '0.1';
@@ -329,6 +340,13 @@ function buildStatCard({ label, value, editable, onSave }) {
   return card;
 }
 
+function editIcon() {
+  return `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/>
+    <path d="M10 4l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`;
+}
+
 function buildSparklineCard() {
   const card = document.createElement('section');
   card.className = 'card sparkline-card';
@@ -352,7 +370,7 @@ function buildSparklineCard() {
       </select>
       <span>days</span>
     </div>
-    <div class="sparkline-delta ${deltaClass(delta)}">${delta == null ? '—' : fmtSignedWeight(delta) + ' lbs'}</div>
+    <div class="sparkline-delta ${signClass(delta)}">${delta == null ? '—' : fmtSignedWeight(delta) + ' lbs'}</div>
   `;
   card.appendChild(header);
 
@@ -367,12 +385,6 @@ function buildSparklineCard() {
   card.appendChild(chartWrap);
 
   return card;
-}
-
-function deltaClass(delta) {
-  if (delta == null || delta === 0) return 'neutral';
-  const toward = movingTowardGoal(delta, state.meta.startWeight, state.meta.goal);
-  return toward === false ? 'off' : '';
 }
 
 /* ---------- Trends ---------- */
@@ -407,12 +419,12 @@ function renderTrends(root) {
     segmented.appendChild(btn);
   }
 
-  const meta = document.createElement('div');
-  meta.className = 'card-label';
   const windowPoints = rangedPoints();
   const delta = windowPoints.length >= 2
     ? windowPoints[windowPoints.length - 1].weight - windowPoints[0].weight
     : null;
+  const meta = document.createElement('div');
+  meta.className = `trend-delta ${signClass(delta)}`;
   meta.textContent = delta == null ? '' : `${fmtSignedWeight(delta)} lbs`;
 
   header.appendChild(segmented);
@@ -426,6 +438,7 @@ function renderTrends(root) {
     points: windowPoints,
     goal: state.meta.goal,
     rolling,
+    xBounds: rangedBounds(),
   }));
   card.appendChild(chartWrap);
 
@@ -439,6 +452,16 @@ function rangedPoints() {
   const today = todayISO();
   const startIso = addDays(today, -(days - 1));
   return entriesInRange(state.entries, startIso, today);
+}
+
+function rangedBounds() {
+  const days = RANGE_DAYS[state.trendsRange];
+  const today = todayISO();
+  if (days == null) {
+    if (!state.entries.length) return { start: today, end: today };
+    return { start: state.entries[0].date, end: state.entries[state.entries.length - 1].date };
+  }
+  return { start: addDays(today, -(days - 1)), end: today };
 }
 
 function rollingSeries(points, windowDays) {
@@ -502,7 +525,7 @@ function renderHistory(root) {
       tr.appendChild(weightTd);
 
       const deltaTd = document.createElement('td');
-      deltaTd.className = 'delta ' + (delta == null ? 'flat' : delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat');
+      deltaTd.className = 'delta ' + (delta == null ? 'delta-none' : signClass(delta));
       deltaTd.textContent = delta == null ? '—' : `${fmtSignedWeight(delta)} lbs`;
       tr.appendChild(deltaTd);
 

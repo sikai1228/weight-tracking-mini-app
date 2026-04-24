@@ -77,3 +77,10 @@ export function movingTowardGoal(delta, start, goal) {
   const goalDirection = goal - start;
   return (goalDirection > 0 && delta > 0) || (goalDirection < 0 && delta < 0);
 }
+
+export function signClass(delta) {
+  if (delta == null) return 'delta-none';
+  if (delta > 0) return 'delta-pos';
+  if (delta < 0) return 'delta-neg';
+  return 'delta-zero';
+}
