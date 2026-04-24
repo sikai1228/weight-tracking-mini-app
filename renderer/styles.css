@@ -21,11 +21,13 @@
     system-ui, "Helvetica Neue", Arial, sans-serif;
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html, body {
   margin: 0;
+  padding: 0;
   height: 100%;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
@@ -35,6 +37,11 @@ html, body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.25); }
 
 button {
   font-family: inherit;
@@ -120,16 +127,19 @@ nav {
 
 .content {
   overflow-y: auto;
-  padding: 40px 48px 64px;
+  padding: 32px 32px;
+  min-height: 0;
 }
 
 .view {
-  max-width: 880px;
+  max-width: 1100px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
+
+.view > *:last-child { margin-bottom: 0; }
 
 .view-title {
   font-size: 22px;
@@ -143,7 +153,7 @@ nav {
   background: var(--surface-raised);
   border: 0.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 20px;
 }
 
 .card-header {
@@ -166,8 +176,8 @@ nav {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 32px;
-  padding: 28px;
+  gap: 24px;
+  padding: 22px;
 }
 
 .hero-date {
@@ -237,7 +247,7 @@ nav {
   align-items: end;
 }
 
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field label { font-size: 12px; color: var(--text-2); font-weight: 400; }
 
 .weight-input {
@@ -272,6 +282,8 @@ nav {
   color: #fff;
   border-radius: var(--radius-sm);
   font-weight: 500;
+  white-space: nowrap;
+  min-width: 120px;
 }
 
 .btn-primary:hover { filter: brightness(1.05); }
@@ -311,7 +323,7 @@ nav {
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .stat-card {
@@ -362,6 +374,7 @@ nav {
   line-height: 1.2;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .stat-unit {
@@ -405,7 +418,7 @@ nav {
 
 
 /* Sparkline */
-.sparkline-card { padding: 20px 24px 24px; }
+.sparkline-card { padding: 20px; }
 
 .sparkline-header {
   display: flex;
@@ -627,6 +640,13 @@ svg .chart-raw-line {
   stroke-width: 1.2;
   stroke-dasharray: 2 3;
   stroke-linecap: round;
+}
+svg .chart-regression-endpoint { fill: var(--accent-dark); }
+svg .regression-label {
+  font-size: 11px;
+  font-weight: 500;
+  fill: var(--accent-dark);
+  font-family: var(--font);
 }
 svg .chart-dot { fill: var(--text-2); pointer-events: none; }
 svg .chart-dot-raw { opacity: 0.75; }

@@ -257,6 +257,35 @@ export function trendChart({ points, goal, rolling, regression, xBounds, width =
       .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(2)},${y(p.weight).toFixed(2)}`)
       .join(' ');
     svg.appendChild(el('path', { d, class: 'chart-regression' }));
+
+    const startPt = regression[0];
+    const endPt = regression[regression.length - 1];
+    svg.appendChild(el('circle', {
+      cx: x(startPt.date), cy: y(startPt.weight),
+      r: 4, class: 'chart-regression-endpoint',
+    }));
+    svg.appendChild(el('circle', {
+      cx: x(endPt.date), cy: y(endPt.weight),
+      r: 4, class: 'chart-regression-endpoint',
+    }));
+
+    const startLabel = el('text', {
+      x: x(startPt.date) + 8,
+      y: y(startPt.weight) - 10,
+      'text-anchor': 'start',
+      class: 'regression-label',
+    });
+    startLabel.textContent = `${startPt.weight.toFixed(1)} lbs · ${formatShortDate(startPt.date)}`;
+    svg.appendChild(startLabel);
+
+    const endLabel = el('text', {
+      x: x(endPt.date) - 8,
+      y: y(endPt.weight) - 10,
+      'text-anchor': 'end',
+      class: 'regression-label',
+    });
+    endLabel.textContent = `${endPt.weight.toFixed(1)} lbs · ${formatShortDate(endPt.date)}`;
+    svg.appendChild(endLabel);
   }
 
   if (rolling && rolling.length > 1) {
