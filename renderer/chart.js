@@ -1,4 +1,4 @@
-import { parseISO, daysBetween, toISO, addDays, formatShortDate } from './util.js';
+import { parseISO, daysBetween, toISO, addDays, formatShortDate, formatEstDate, fmtWeight, fmtSignedWeight, signClass } from './util.js';
 
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -173,7 +173,10 @@ export function sparkline({ points, goal, width = 560, height = 120 }) {
 }
 
 export function trendChart({ points, goal, rolling, xBounds, width = 800, height = 360 }) {
+  const wrap = document.createElement('div');
+  wrap.className = 'trend-chart-wrap';
   const svg = el('svg', { viewBox: `0 0 ${width} ${height}`, width: '100%', height });
+  wrap.appendChild(svg);
   if (!points.length) {
     const text = el('text', {
       x: width / 2, y: height / 2,
@@ -182,7 +185,7 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
     });
     text.textContent = 'No entries in this range';
     svg.appendChild(text);
-    return svg;
+    return wrap;
   }
   const padding = { top: 16, right: 16, bottom: 28, left: 40 };
   const yBounds = trendYBounds(points, goal);
@@ -231,7 +234,7 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
   for (const p of points) {
     svg.appendChild(el('circle', {
       cx: x(p.date), cy: y(p.weight),
-      r: 2.5,
+      r: 3,
       class: 'chart-dot',
     }));
   }
@@ -241,5 +244,46 @@ export function trendChart({ points, goal, rolling, xBounds, width = 800, height
     svg.appendChild(el('path', { d, class: 'chart-line' }));
   }
 
-  return svg;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const prev = i > 0 ? points[i - 1] : null;
+    const hit = el('circle', {
+      cx: x(p.date), cy: y(p.weight),
+      r: 12,
+      class: 'chart-dot-hit',
+      'data-iso': p.date,
+      'data-weight': String(p.weight),
+    });
+    if (prev) hit.setAttribute('data-prev-weight', String(prev.weight));
+    svg.appendChild(hit);
+  }
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'chart-tooltip';
+  tooltip.style.display = 'none';
+  wrap.appendChild(tooltip);
+
+  svg.addEventListener('click', (e) => {
+    const dot = e.target.closest ? e.target.closest('.chart-dot-hit') : null;
+    if (!dot) {
+      tooltip.style.display = 'none';
+      return;
+    }
+    const iso = dot.getAttribute('data-iso');
+    const weight = parseFloat(dot.getAttribute('data-weight'));
+    const prevAttr = dot.getAttribute('data-prev-weight');
+    const change = prevAttr ? weight - parseFloat(prevAttr) : null;
+    tooltip.innerHTML = `
+      <div class="tt-date">${formatEstDate(iso)}</div>
+      <div class="tt-weight">${fmtWeight(weight)} lbs</div>
+      <div class="tt-change ${signClass(change)}">${change == null ? '' : fmtSignedWeight(change) + ' lbs'}</div>
+    `;
+    const dotRect = dot.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    tooltip.style.left = `${dotRect.left - wrapRect.left + dotRect.width / 2}px`;
+    tooltip.style.top = `${dotRect.top - wrapRect.top}px`;
+    tooltip.style.display = 'block';
+  });
+
+  return wrap;
 }

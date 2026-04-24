@@ -1,7 +1,8 @@
 import {
   todayISO, toISO, parseISO, addDays, daysBetween,
-  formatFullDate, formatShortDate, fmtWeight, fmtSignedWeight,
-  avg, rollingAverageWindow, weightChangePastDays, progressPct, signClass, entriesInRange,
+  formatFullDate, formatShortDate, formatEstDate, fmtWeight, fmtSignedWeight,
+  avg, rollingAverageWindow, weightChangePastDays, projectGoalDate,
+  progressPct, signClass, entriesInRange,
 } from './util.js';
 import { progressRing, sparkline, trendChart } from './chart.js';
 
@@ -290,8 +291,6 @@ function buildStatsRow() {
   const row = document.createElement('div');
   row.className = 'stats-row';
 
-  const latest = state.entries.length ? state.entries[state.entries.length - 1].weight : null;
-
   row.appendChild(buildStatCard({
     label: 'Start',
     value: state.meta.startWeight,
@@ -301,12 +300,6 @@ function buildStatsRow() {
       await refresh();
       render();
     },
-  }));
-
-  row.appendChild(buildStatCard({
-    label: 'Current',
-    value: latest,
-    editable: false,
   }));
 
   row.appendChild(buildStatCard({
@@ -320,10 +313,18 @@ function buildStatsRow() {
     },
   }));
 
+  const projectedIso = projectGoalDate(state.entries, state.meta.goal);
+  row.appendChild(buildStatCard({
+    label: 'Estimated time',
+    value: projectedIso,
+    kind: 'date',
+    editable: false,
+  }));
+
   return row;
 }
 
-function buildStatCard({ label, value, editable, onSave }) {
+function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
   const card = document.createElement('div');
   card.className = 'stat-card';
 
@@ -350,13 +351,19 @@ function buildStatCard({ label, value, editable, onSave }) {
   valueEl.className = 'stat-value';
 
   const numEl = document.createElement('span');
-  numEl.textContent = value == null ? '—' : fmtWeight(value);
+  if (kind === 'date') {
+    numEl.textContent = value == null ? '—' : formatEstDate(value);
+  } else {
+    numEl.textContent = value == null ? '—' : fmtWeight(value);
+  }
   valueEl.appendChild(numEl);
 
-  const unit = document.createElement('span');
-  unit.className = 'unit';
-  unit.textContent = 'lbs';
-  valueEl.appendChild(unit);
+  if (kind !== 'date') {
+    const unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = 'lbs';
+    valueEl.appendChild(unit);
+  }
 
   card.appendChild(valueEl);
 
