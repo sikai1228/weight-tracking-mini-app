@@ -382,7 +382,6 @@ nav {
   border-color: var(--accent);
 }
 
-.stat-edit-input::selection { background: transparent; }
 
 /* Sparkline */
 .sparkline-card { padding: 20px 24px 24px; }

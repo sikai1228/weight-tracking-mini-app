@@ -377,24 +377,16 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
       input.value = value ?? '';
       numEl.replaceWith(input);
       input.focus();
-      const len = input.value.length;
-      input.setSelectionRange(len, len);
-
-      let cleared = false;
-      input.addEventListener('beforeinput', (e) => {
-        if (cleared) return;
-        if (e.inputType === 'insertText' || e.inputType === 'insertFromPaste') {
-          input.value = '';
-          cleared = true;
-        } else if (e.inputType && e.inputType.startsWith('delete')) {
-          cleared = true;
-        }
-      });
+      input.select();
 
       let finished = false;
+      const onOutsideMouseDown = (e) => {
+        if (!input.contains(e.target)) input.blur();
+      };
       const finalize = async (commit) => {
         if (finished) return;
         finished = true;
+        document.removeEventListener('mousedown', onOutsideMouseDown, true);
         const parsed = Number(input.value);
         if (commit && parsed > 0 && parsed !== value) {
           await onSave(parsed);
@@ -405,8 +397,13 @@ function buildStatCard({ label, value, kind = 'weight', editable, onSave }) {
       input.addEventListener('blur', () => finalize(true));
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-        if (e.key === 'Escape') { finished = true; render(); }
+        if (e.key === 'Escape') {
+          finished = true;
+          document.removeEventListener('mousedown', onOutsideMouseDown, true);
+          render();
+        }
       });
+      document.addEventListener('mousedown', onOutsideMouseDown, true);
     });
   }
 
