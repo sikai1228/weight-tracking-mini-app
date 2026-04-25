@@ -546,10 +546,12 @@ function buildHeroCard() {
 
   const right = document.createElement('div');
   right.className = 'ring-wrap';
-  const current = latest;
-  const pct = progressPct(current, state.meta.startWeight, state.meta.goal);
-  const rawFraction = (state.meta.startWeight != null && state.meta.goal != null && state.meta.goal !== state.meta.startWeight && current != null)
-    ? (current - state.meta.startWeight) / (state.meta.goal - state.meta.startWeight)
+  // Use the same value as the big number above (7-day rolling avg, falling
+  // back to the latest entry) so ring and headline weight stay consistent.
+  const ringWeight = display;
+  const pct = progressPct(ringWeight, state.meta.startWeight, state.meta.goal);
+  const rawFraction = (state.meta.startWeight != null && state.meta.goal != null && state.meta.goal !== state.meta.startWeight && ringWeight != null)
+    ? (ringWeight - state.meta.startWeight) / (state.meta.goal - state.meta.startWeight)
     : null;
   const ringColor = rawFraction != null && rawFraction < 0 ? 'var(--color-negative)' : 'var(--accent)';
   right.appendChild(progressRing({ percent: pct ?? 0, color: ringColor }));
